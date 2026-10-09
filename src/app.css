@@ -1,0 +1,10 @@
+:root {
+  --bg: #f4f4f5; --panel: #fafafa; --card: #fff; --border: #e4e4e7;
+  --text: #18181b; --muted: #71717a; --accent: #27272a;
+  --base: #d0312d; --letters: #3436c9;
+  font-family: system-ui, -apple-system, sans-serif; color: var(--text);
+}
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; height: 100%; background: var(--bg); }
+button { font: inherit; cursor: pointer; }
+input, select { font: inherit; }
