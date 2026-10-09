@@ -29,7 +29,12 @@ export const CATEGORY_LABELS: Record<string, string> = {
 let cache: Promise<IconEntry[]> | null = null;
 
 export function loadIcons(): Promise<IconEntry[]> {
-  cache ??= import('./icons.json').then((m) => m.default as IconEntry[]);
+  cache ??= import('./icons.json')
+    .then((m) => m.default as IconEntry[])
+    .catch((e) => {
+      cache = null;
+      throw e;
+    });
   return cache;
 }
 

@@ -61,12 +61,18 @@
 
   // icônes (lazy)
   let iconsRequested = false;
+  let iconsError = $state(false);
   $effect(() => {
     if ((params.iconEnabled || pickerOpen) && !iconsRequested) {
       iconsRequested = true;
+      iconsError = false;
       loadIcons()
         .then((l) => (icons = l))
-        .catch((e: Error) => notify(`Chargement des icônes impossible : ${e.message}`));
+        .catch((e: Error) => {
+          iconsRequested = false;
+          iconsError = true;
+          notify(`Chargement des icônes impossible : ${e.message}`);
+        });
     }
   });
   let iconPath = $derived(icons.find((i) => i.name === params.iconName)?.path);
@@ -154,7 +160,7 @@
     {onexport} {onimportfont} onpickicon={() => (pickerOpen = true)} />
 
   {#if pickerOpen}
-    <IconPicker {icons} selected={params.iconName}
+    <IconPicker {icons} failed={iconsError} selected={params.iconName}
       onselect={(n) => (params.iconName = n)} onclose={() => (pickerOpen = false)} />
   {/if}
 

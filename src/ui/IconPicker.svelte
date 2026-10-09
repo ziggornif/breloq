@@ -1,8 +1,9 @@
 <script lang="ts">
   import { CATEGORY_LABELS, filterIcons, type IconEntry } from '../icons/icons';
 
-  let { icons, selected, onselect, onclose }: {
+  let { icons, failed = false, selected, onselect, onclose }: {
     icons: IconEntry[];
+    failed?: boolean;
     selected: string;
     onselect: (name: string) => void;
     onclose: () => void;
@@ -32,7 +33,7 @@
     {/each}
   </div>
   {#if icons.length === 0}
-    <p class="muted">Chargement…</p>
+    <p class="muted">{failed ? 'Chargement des icônes impossible' : 'Chargement…'}</p>
   {:else}
     <div class="grid">
       {#each results as i (i.name)}
