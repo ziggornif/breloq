@@ -1,6 +1,6 @@
 import earcut from 'earcut';
 import { cleanPath, groupPolygons } from '../geometry/clip';
-import { SCALE, type Shape } from '../geometry/types';
+import { SCALE, type Path, type Shape } from '../geometry/types';
 
 export interface Mesh {
   positions: number[];
@@ -17,8 +17,10 @@ export function extrude(s: Shape, z0: number, z1: number): Mesh {
 
   for (const g of groupPolygons(s)) {
     // rings en coordonnées 3D (x, -y) entières µm ; outer CCW, holes CW vus de dessus
+    const clean = (p: Path) => cleanPath(p).map((pt) => [pt.x, -pt.y] as [number, number]);
+    if (clean(g.outer).length < 3) continue; // outer degenerate: drop group, never promote a hole
     const rings = [g.outer, ...g.holes]
-      .map((p) => cleanPath(p).map((pt) => [pt.x, -pt.y] as [number, number]))
+      .map(clean)
       .filter((r) => r.length >= 3)
       .map((r, i) => (signedArea(r) > 0) === (i === 0) ? r : r.reverse());
     if (rings.length === 0 || signedArea(rings[0]) <= 0) continue;

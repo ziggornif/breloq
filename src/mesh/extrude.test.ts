@@ -44,3 +44,11 @@ describe('extrude', () => {
     expect(volume(m)).toBeCloseTo(2, 6);
   });
 });
+
+describe('extrude degenerate input', () => {
+  it('skips a group whose outer ring cleans to nothing instead of promoting a hole', () => {
+    const sliver = makePath([0, 0, 5, 0, 10, 0]); // collinear -> < 3 points
+    const m = extrude(toShape([sliver]), 0, 1);
+    expect(m.indices.length).toBe(0);
+  });
+});
