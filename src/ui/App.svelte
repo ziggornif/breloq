@@ -11,6 +11,7 @@
   import { loadIcons, type IconEntry } from '../icons/icons';
   import Panel from './Panel.svelte';
   import Preview2D from './Preview2D.svelte';
+  import Preview3D from './Preview3D.svelte';
 
   const STORAGE_KEY = 'porte-cles-gen:params';
 
@@ -140,7 +141,7 @@
     {:else if view === '2d'}
       <Preview2D {geometry} />
     {:else}
-      <p class="msg">Aperçu 3D (Task 14)</p>
+      <Preview3D {geometry} params={sanitize($state.snapshot(params))} />
     {/if}
     {#if geometry?.missing.length}
       <p class="warn">Caractères absents de la police, ignorés : {geometry.missing.join(' ')}</p>
