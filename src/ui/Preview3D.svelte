@@ -15,6 +15,7 @@
   let controls: OrbitControls;
   let group = new THREE.Group();
   let framedFor = '';
+  let meshError = $state<string | null>(null);
 
   function toThree(m: Mesh, color: string): THREE.Mesh {
     const g = new THREE.BufferGeometry();
@@ -62,6 +63,7 @@
       renderer.setAnimationLoop(null);
       clearGroup();
       controls.dispose();
+      renderer.forceContextLoss();
       renderer.dispose();
       renderer.domElement.remove();
       framedFor = '';
@@ -69,9 +71,16 @@
   });
 
   $effect(() => {
-    const m = buildMeshes(geometry, params);
-    clearGroup();
-    group.add(toThree(m.base, params.baseColor), toThree(m.letters, params.lettersColor));
+    try {
+      const m = buildMeshes(geometry, params);
+      clearGroup();
+      group.add(toThree(m.base, params.baseColor), toThree(m.letters, params.lettersColor));
+      meshError = null;
+    } catch (e) {
+      clearGroup();
+      meshError = `Aperçu 3D impossible : ${(e as Error).message}`;
+      return;
+    }
 
     const key = `${Math.round(geometry.width)}x${Math.round(geometry.height)}`;
     if (key !== framedFor) {
@@ -85,8 +94,13 @@
   });
 </script>
 
-<div class="host" bind:this={host}></div>
+<div class="wrap">
+  <div class="host" bind:this={host}></div>
+  {#if meshError}<p class="err">{meshError}</p>{/if}
+</div>
 
 <style>
+  .wrap { position: relative; width: 100%; height: 100%; }
+  .err { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 16px; text-align: center; color: var(--muted); pointer-events: none; }
   .host { width: 100%; height: 100%; min-height: 300px; }
 </style>
