@@ -2,3 +2,4 @@
 node_modules
 dist
 src/icons/icons.json
+.vitest/
