@@ -9,6 +9,7 @@
   import { download } from '../export/download';
   import { importFont, listFonts, loadFont, type FontEntry } from '../fonts/registry';
   import { loadIcons, type IconEntry } from '../icons/icons';
+  import IconPicker from './IconPicker.svelte';
   import Panel from './Panel.svelte';
   import Preview2D from './Preview2D.svelte';
   import Preview3D from './Preview3D.svelte';
@@ -61,7 +62,7 @@
   // icônes (lazy)
   let iconsRequested = false;
   $effect(() => {
-    if (params.iconEnabled && !iconsRequested) {
+    if ((params.iconEnabled || pickerOpen) && !iconsRequested) {
       iconsRequested = true;
       loadIcons()
         .then((l) => (icons = l))
@@ -151,6 +152,11 @@
   <Panel bind:params {fonts} canExport={!!geometry}
     iconLabel={params.iconName.replace(/-fill$/, '')}
     {onexport} {onimportfont} onpickicon={() => (pickerOpen = true)} />
+
+  {#if pickerOpen}
+    <IconPicker {icons} selected={params.iconName}
+      onselect={(n) => (params.iconName = n)} onclose={() => (pickerOpen = false)} />
+  {/if}
 
   {#if toast}<div class="toast">{toast}</div>{/if}
 </main>
