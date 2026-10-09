@@ -87,7 +87,7 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
   - 3D : Three.js + OrbitControls, couleurs `baseColor` / `lettersColor`.
 - **Panneau droit** : sections Texte, Police (liste avec aperçu + import TTF/OTF), Icône (toggle + picker avec recherche et catégories Remix), Trou, Mode (laser / 3D, réglages 3D visibles en mode 3D), bouton Exporter.
 - **Persistance** : localStorage + état encodé dans l'URL (hash) pour partager. Une police importée n'est pas partageable par lien (fallback sur la police par défaut).
-- Polices embarquées (~15) : scripts attachés (Pacifico, Lobster, Dancing Script, Great Vibes, Satisfy, Kaushan Script, Yellowtail, Cookie) et grasses lisibles (Fredoka, Baloo 2, Righteous, Bungee, Titan One, Luckiest Guy, Chewy). Chargées à la demande.
+- Polices embarquées (14) : scripts attachés (Pacifico, Lobster, Dancing Script, Satisfy, Kaushan Script, Yellowtail, Cookie) et grasses lisibles (Fredoka, Baloo 2, Righteous, Bungee, Titan One, Luckiest Guy, Chewy). Chargées à la demande.
 - Icônes : script de build qui lit `remixicon` et génère `icons.json` (`{ name, category, path }`), seulement les variantes `-fill` pour rester découpables.
 
 ## Erreurs

@@ -2,7 +2,6 @@ import { parse, type Font } from 'opentype.js';
 import '@fontsource/pacifico/400.css';
 import '@fontsource/lobster/400.css';
 import '@fontsource/dancing-script/700.css';
-import '@fontsource/great-vibes/400.css';
 import '@fontsource/satisfy/400.css';
 import '@fontsource/kaushan-script/400.css';
 import '@fontsource/yellowtail/400.css';
@@ -17,7 +16,6 @@ import '@fontsource/chewy/400.css';
 import pacifico from '@fontsource/pacifico/files/pacifico-latin-400-normal.woff?url';
 import lobster from '@fontsource/lobster/files/lobster-latin-400-normal.woff?url';
 import dancing from '@fontsource/dancing-script/files/dancing-script-latin-700-normal.woff?url';
-import greatVibes from '@fontsource/great-vibes/files/great-vibes-latin-400-normal.woff?url';
 import satisfy from '@fontsource/satisfy/files/satisfy-latin-400-normal.woff?url';
 import kaushan from '@fontsource/kaushan-script/files/kaushan-script-latin-400-normal.woff?url';
 import yellowtail from '@fontsource/yellowtail/files/yellowtail-latin-400-normal.woff?url';
@@ -43,7 +41,6 @@ export const FONTS: FontEntry[] = [
   { id: 'pacifico', label: 'Pacifico', family: 'Pacifico', url: pacifico },
   { id: 'lobster', label: 'Lobster', family: 'Lobster', url: lobster },
   { id: 'dancing-script', label: 'Dancing Script', family: 'Dancing Script', url: dancing },
-  { id: 'great-vibes', label: 'Great Vibes', family: 'Great Vibes', url: greatVibes },
   { id: 'satisfy', label: 'Satisfy', family: 'Satisfy', url: satisfy },
   { id: 'kaushan-script', label: 'Kaushan Script', family: 'Kaushan Script', url: kaushan },
   { id: 'yellowtail', label: 'Yellowtail', family: 'Yellowtail', url: yellowtail },
