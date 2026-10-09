@@ -8,6 +8,7 @@
     "dev": "npm run icons && vite",
     "build": "npm run icons && vite build",
     "preview": "vite preview",
+    "pretest": "npm run icons",
     "test": "vitest run",
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
