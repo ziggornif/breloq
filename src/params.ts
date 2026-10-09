@@ -55,7 +55,22 @@ const ENUMS: Partial<Record<keyof KeychainParams, readonly string[]>> = {
   holePosition: ['left', 'right', 'top'],
   mode: ['laser', 'print3d'],
 };
-const MAY_BE_NEGATIVE: (keyof KeychainParams)[] = ['letterSpacing', 'holeOffset'];
+const BOUNDS: Partial<Record<keyof KeychainParams, readonly [number, number]>> = {
+  fontSize: [5, 200],
+  textWeight: [0, 5],
+  letterSpacing: [-10, 20],
+  outlineWidth: [0.5, 15],
+  iconSize: [3, 100],
+  iconGap: [0, 30],
+  holeOffset: [-200, 200],
+  holeDiameter: [1, 20],
+  holeMargin: [0.5, 15],
+  baseThickness: [0.6, 20],
+  reliefHeight: [0.2, 20],
+  pocketDepth: [0, 10],
+  clearance: [0, 1],
+};
+const TEXT_MAX_CHARS = 40;
 const COLOR = /^#[0-9a-f]{6}$/i;
 
 export function sanitize(raw: unknown): KeychainParams {
@@ -67,11 +82,13 @@ export function sanitize(raw: unknown): KeychainParams {
     if (typeof v !== typeof def) continue;
     if (typeof v === 'number') {
       if (!Number.isFinite(v)) continue;
-      out[key] = MAY_BE_NEGATIVE.includes(key) ? v : Math.max(0, v);
+      const bounds = BOUNDS[key];
+      out[key] = bounds ? Math.min(bounds[1], Math.max(bounds[0], v)) : v;
     } else if (typeof v === 'string') {
-      if (ENUMS[key] && !ENUMS[key]!.includes(v)) continue;
+      const allowed = ENUMS[key];
+      if (allowed && !allowed.includes(v)) continue;
       if (key.endsWith('Color') && !COLOR.test(v)) continue;
-      out[key] = v;
+      out[key] = key === 'text' ? Array.from(v).slice(0, TEXT_MAX_CHARS).join('') : v;
     } else {
       out[key] = v;
     }
