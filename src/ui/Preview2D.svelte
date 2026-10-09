@@ -18,6 +18,7 @@
   let vbW = $derived(w + PAD + PAD_RIGHT);
   let vbH = $derived(h * 2 + GAP + PAD * 2 + 8);
   let ticks = $derived(Array.from({ length: Math.floor(w / 10) + 1 }, (_, i) => i * 10));
+  let vTicks = $derived(Array.from({ length: Math.floor(h / 10) + 1 }, (_, i) => i * 10));
 </script>
 
 <svg class="preview" viewBox="{-PAD} {-PAD} {vbW} {vbH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Aperçu 2D du porte-clés">
@@ -36,6 +37,10 @@
   {#each ticks as t}
     <line x1={t} y1={-PAD} x2={t} y2={-PAD + 2} stroke="#a1a1aa" stroke-width="0.2" />
     <text x={t} y={-PAD + 4.5} font-size="2.4" fill="#71717a" text-anchor="middle">{t}</text>
+  {/each}
+  {#each vTicks as t}
+    <line x1={-PAD} y1={t} x2={-PAD + 2} y2={t} stroke="#a1a1aa" stroke-width="0.2" />
+    <text x={-PAD + 3} y={t} font-size="2.4" fill="#71717a" dominant-baseline="middle">{t}</text>
   {/each}
 
   <!-- vue assemblée -->
