@@ -35,26 +35,37 @@
   let pickerOpen = $state(false);
   let lastGoodFontId = untrack(() => params.fontId);
 
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
   function notify(msg: string) {
     toast = msg;
-    setTimeout(() => (toast = null), 4000);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast = null), 4000);
   }
 
   // police
   $effect(() => {
     const id = params.fontId;
+    let cancelled = false;
     loadFont(id)
-      .then((f) => { font = f; lastGoodFontId = id; })
+      .then((f) => { if (cancelled) return; font = f; lastGoodFontId = id; })
       .catch((e: Error) => {
+        if (cancelled) return;
         notify(e.message);
         if (id !== lastGoodFontId) params.fontId = lastGoodFontId;
         else if (id !== DEFAULT_PARAMS.fontId) params.fontId = DEFAULT_PARAMS.fontId;
       });
+    return () => { cancelled = true; };
   });
 
   // icônes (lazy)
+  let iconsRequested = false;
   $effect(() => {
-    if (params.iconEnabled && icons.length === 0) loadIcons().then((l) => (icons = l));
+    if (params.iconEnabled && !iconsRequested) {
+      iconsRequested = true;
+      loadIcons()
+        .then((l) => (icons = l))
+        .catch((e: Error) => notify(`Chargement des icônes impossible : ${e.message}`));
+    }
   });
   let iconPath = $derived(icons.find((i) => i.name === params.iconName)?.path);
 
@@ -78,7 +89,7 @@
 
   // persistance
   $effect(() => {
-    const snapshot = $state.snapshot(params) as KeychainParams;
+    const snapshot = sanitize($state.snapshot(params));
     const t = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch { /* ignoré */ }
       const shareable = snapshot.fontId.startsWith('custom:') ? { ...snapshot, fontId: DEFAULT_PARAMS.fontId } : snapshot;
@@ -99,15 +110,19 @@
 
   function onexport() {
     if (!geometry) return;
-    const name = fileBaseName(params.text);
-    if (params.mode === 'laser') {
-      download(laserZip(geometry), `${name}-laser.zip`, 'application/zip');
-    } else {
-      const m = buildMeshes(geometry, sanitize($state.snapshot(params)));
-      download(build3mf([
-        { name: 'base', color: params.baseColor, mesh: m.base },
-        { name: 'lettres', color: params.lettersColor, mesh: m.letters },
-      ]), `${name}.3mf`, 'model/3mf');
+    try {
+      const name = fileBaseName(params.text);
+      if (params.mode === 'laser') {
+        download(laserZip(geometry), `${name}-laser.zip`, 'application/zip');
+      } else {
+        const m = buildMeshes(geometry, sanitize($state.snapshot(params)));
+        download(build3mf([
+          { name: 'base', color: params.baseColor, mesh: m.base },
+          { name: 'lettres', color: params.lettersColor, mesh: m.letters },
+        ]), `${name}.3mf`, 'model/3mf');
+      }
+    } catch (e) {
+      notify(`Export impossible : ${(e as Error).message}`);
     }
   }
 </script>
