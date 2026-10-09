@@ -30,3 +30,24 @@ export function volume(m: Mesh): number {
   }
   return v;
 }
+
+/**
+ * Fermeture vue par un slicer, qui soude les sommets par position :
+ * chaque arête orientée est compensée par autant d'arêtes opposées.
+ */
+export function isClosedByPosition(m: Mesh): boolean {
+  const P = m.positions;
+  const key = (i: number) => `${P[3 * i]},${P[3 * i + 1]},${P[3 * i + 2]}`;
+  const edges = new Map<string, number>();
+  for (let i = 0; i < m.indices.length; i += 3) {
+    for (let k = 0; k < 3; k++) {
+      const e = `${key(m.indices[i + k])}>${key(m.indices[i + ((k + 1) % 3)])}`;
+      edges.set(e, (edges.get(e) ?? 0) + 1);
+    }
+  }
+  for (const [e, n] of edges) {
+    const [a, b] = e.split('>');
+    if (edges.get(`${b}>${a}`) !== n) return false;
+  }
+  return true;
+}

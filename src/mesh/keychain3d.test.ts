@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { buildKeychain } from '../geometry/keychain';
 import { buildMeshes } from './keychain3d';
-import { isWatertight, volume } from './check';
+import { isClosedByPosition, isWatertight, volume } from './check';
+import icons from '../icons/icons.json';
 import { DEFAULT_PARAMS } from '../params';
 import { loadTestFont } from '../test/fonts';
 
@@ -37,4 +38,13 @@ describe('buildMeshes', () => {
     const pocketed = buildMeshes(g, DEFAULT_PARAMS);
     expect(volume(pocketed.base)).toBeLessThan(volume(solid.base));
   });
+
+  it.each(['emotion-laugh-fill', 'lock-fill', 'corner-right-up-fill', 'battery-charge-fill'])(
+    'icon %s: meshes stay closed once a slicer welds vertices by position', (name) => {
+      const path = (icons as { name: string; path: string }[]).find((i) => i.name === name)!.path;
+      const p = { ...DEFAULT_PARAMS, iconEnabled: true };
+      const m = buildMeshes(buildKeychain(p, font, path)!, p);
+      expect(isClosedByPosition(m.letters)).toBe(true);
+      expect(isClosedByPosition(m.base)).toBe(true);
+    });
 });
