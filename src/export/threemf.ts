@@ -5,12 +5,15 @@ export interface ThreeMfObject {
   name: string;
   color: string;
   mesh: Mesh;
+  /** Extrudeur/filament (1-based) lu par Bambu Studio / OrcaSlicer ; défaut : index + 1. */
+  extruder?: number;
 }
 
 const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+  <Default Extension="config" ContentType="text/xml"/>
 </Types>`;
 
 const RELS = `<?xml version="1.0" encoding="UTF-8"?>
@@ -20,6 +23,23 @@ const RELS = `<?xml version="1.0" encoding="UTF-8"?>
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 const f = (v: number) => String(+v.toFixed(4));
+
+/** Metadata/model_settings.config : affectation d'extrudeur par pièce (Bambu Studio / OrcaSlicer ; ignoré par les autres). */
+function modelSettings(objects: ThreeMfObject[], parentId: number, name: string): string {
+  const parts = objects.map((o, k) => `    <part id="${k + 2}" subtype="normal_part">
+      <metadata key="name" value="${esc(o.name)}"/>
+      <metadata key="extruder" value="${o.extruder ?? k + 1}"/>
+    </part>`);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <object id="${parentId}">
+    <metadata key="name" value="${esc(name)}"/>
+    <metadata key="extruder" value="${objects[0]?.extruder ?? 1}"/>
+${parts.join('\n')}
+  </object>
+</config>
+`;
+}
 
 export function build3mf(objects: ThreeMfObject[], name = 'porte-cles'): Uint8Array {
   const parts: string[] = [];
@@ -46,5 +66,6 @@ export function build3mf(objects: ThreeMfObject[], name = 'porte-cles'): Uint8Ar
     '[Content_Types].xml': strToU8(CONTENT_TYPES),
     '_rels/.rels': strToU8(RELS),
     '3D/3dmodel.model': strToU8(parts.join('')),
+    'Metadata/model_settings.config': strToU8(modelSettings(objects, parentId, name)),
   });
 }

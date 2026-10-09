@@ -11,7 +11,7 @@ describe('build3mf', () => {
       { name: 'base', color: '#c8b496', mesh: tri },
       { name: 'lettres', color: '#ffffff', mesh: tri },
     ]));
-    expect(Object.keys(files).sort()).toEqual(['3D/3dmodel.model', '[Content_Types].xml', '_rels/.rels']);
+    expect(Object.keys(files).sort()).toEqual(['3D/3dmodel.model', 'Metadata/model_settings.config', '[Content_Types].xml', '_rels/.rels']);
     const model = strFromU8(files['3D/3dmodel.model']);
     expect(model).toContain('unit="millimeter"');
     expect(model.match(/<object /g)).toHaveLength(3);
@@ -33,5 +33,22 @@ describe('build3mf', () => {
     }
     expect(model).toContain('displaycolor="#C8B496FF"');
     expect(strFromU8(files['_rels/.rels'])).toContain('Target="/3D/3dmodel.model"');
+  });
+
+  it('assigns one extruder per part (default index+1) in Metadata/model_settings.config', () => {
+    const files = unzipSync(build3mf([
+      { name: 'base', color: '#c8b496', mesh: tri },
+      { name: 'lettres', color: '#ffffff', mesh: tri },
+    ], 'Matthieu'));
+    const cfg = strFromU8(files['Metadata/model_settings.config']);
+    expect(cfg).toContain('<object id="4">');
+    expect(cfg).toContain('<metadata key="name" value="Matthieu"/>');
+    expect(cfg).toMatch(/<part id="2" subtype="normal_part">\s*<metadata key="name" value="base"\/>\s*<metadata key="extruder" value="1"\/>/);
+    expect(cfg).toMatch(/<part id="3" subtype="normal_part">\s*<metadata key="name" value="lettres"\/>\s*<metadata key="extruder" value="2"\/>/);
+  });
+
+  it('honours an explicit extruder', () => {
+    const files = unzipSync(build3mf([{ name: 'a', color: '#000000', mesh: tri, extruder: 3 }]));
+    expect(strFromU8(files['Metadata/model_settings.config'])).toContain('<metadata key="extruder" value="3"/>');
   });
 });
