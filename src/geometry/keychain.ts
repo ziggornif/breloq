@@ -53,18 +53,26 @@ function addHole(base: Shape, p: KeychainParams): Shape {
   const target = 0.25 * Math.PI * R * R;
   const step = 0.25;
 
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const midX = (b.minX + b.maxX) / 2;
+  const midY = (b.minY + b.maxY) / 2;
   let cx: number, cy: number, sx: number, sy: number;
   if (p.holePosition === 'top') {
-    cx = (b.minX + b.maxX) / 2 + p.holeOffset; cy = b.minY - r; sx = 0; sy = step;
+    cx = clamp(midX + p.holeOffset, b.minX, b.maxX); cy = b.minY - r; sx = 0; sy = step;
   } else if (p.holePosition === 'right') {
-    cx = b.maxX + r; cy = (b.minY + b.maxY) / 2 + p.holeOffset; sx = -step; sy = 0;
+    cx = b.maxX + r; cy = clamp(midY + p.holeOffset, b.minY, b.maxY); sx = -step; sy = 0;
   } else {
-    cx = b.minX - r; cy = (b.minY + b.maxY) / 2 + p.holeOffset; sx = step; sy = 0;
+    cx = b.minX - r; cy = clamp(midY + p.holeOffset, b.minY, b.maxY); sx = step; sy = 0;
   }
 
   const maxIter = Math.ceil((b.maxX - b.minX + b.maxY - b.minY) / step);
-  for (let i = 0; i < maxIter && area(intersect(circle(cx, cy, R), base)) < target; i++) {
+  let best = { cx, cy, a: -1 };
+  for (let i = 0; i < maxIter; i++) {
+    const a = area(intersect(circle(cx, cy, R), base));
+    if (a > best.a) best = { cx, cy, a };
+    if (a >= target) break;
     cx += sx; cy += sy;
   }
+  if (best.a < target) ({ cx, cy } = best);
   return difference(union(base, circle(cx, cy, R)), circle(cx, cy, r));
 }

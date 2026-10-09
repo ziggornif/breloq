@@ -69,4 +69,17 @@ describe('buildKeychain', () => {
   it('icon alone is drawable', () => {
     expect(buildKeychain(P({ text: '', iconEnabled: true }), font, SMILEY)).not.toBeNull();
   });
+
+  describe('hole ear stays attached', () => {
+    const without = buildKeychain(P({ holeEnabled: false }), font)!;
+    for (const pos of ['left', 'right', 'top'] as const) {
+      for (const off of [0, 200, -200]) {
+        it(`${pos} offset ${off}`, () => {
+          const g = buildKeychain(P({ holePosition: pos, holeOffset: off }), font)!;
+          expect(outers(g)).toHaveLength(outers(without).length);
+          expect(holes(g)).toHaveLength(1);
+        });
+      }
+    }
+  });
 });
