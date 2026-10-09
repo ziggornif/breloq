@@ -6,6 +6,7 @@
 
   const PAD = 15;
   const GAP = 12;
+  const PAD_RIGHT = 32;
 
   const toD = (s: Shape) =>
     s.map((p) => p.map((pt, i) => `${i ? 'L' : 'M'}${pt.x / SCALE} ${pt.y / SCALE}`).join('') + 'Z').join('');
@@ -14,7 +15,7 @@
   let lettersD = $derived(toD(geometry.letters));
   let w = $derived(geometry.width);
   let h = $derived(geometry.height);
-  let vbW = $derived(w + PAD * 2);
+  let vbW = $derived(w + PAD + PAD_RIGHT);
   let vbH = $derived(h * 2 + GAP + PAD * 2 + 8);
   let ticks = $derived(Array.from({ length: Math.floor(w / 10) + 1 }, (_, i) => i * 10));
 </script>
