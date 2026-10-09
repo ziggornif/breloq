@@ -121,7 +121,7 @@
         download(build3mf([
           { name: 'base', color: params.baseColor, mesh: m.base },
           { name: 'lettres', color: params.lettersColor, mesh: m.letters },
-        ]), `${name}.3mf`, 'model/3mf');
+        ], params.text || 'porte-cles'), `${name}.3mf`, 'model/3mf');
       }
     } catch (e) {
       notify(`Export impossible : ${(e as Error).message}`);

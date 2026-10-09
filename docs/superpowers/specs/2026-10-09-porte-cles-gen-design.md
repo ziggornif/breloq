@@ -76,7 +76,7 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 
 - `svg.ts` : `toSvg(polygons, bounds)` → SVG avec `width/height` en mm et `viewBox` en mm, un `<path>` par polygone (`fill="none" stroke="#ff0000" stroke-width="0.01"`).
   - Laser : `base.svg` (B avec trou) + `lettres.svg` (L ∪ I), zippés dans `<texte>-laser.zip`.
-- `threemf.ts` : 3MF Core minimal : `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` avec `unit="millimeter"`, un `<basematerials>` à deux couleurs, deux `<object>` (`name="base"`, `name="lettres"`) et deux `<item>` dans `<build>`. Fichier `<texte>.3mf`.
+- `threemf.ts` : 3MF Core minimal : `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` avec `unit="millimeter"`, un `<basematerials>` à deux couleurs, deux objets maillés (`name="base"`, `name="lettres"`) regroupés dans un objet parent à `<components>`, un seul `<item>` dans `<build>`. Fichier `<texte>.3mf`.
 - `download.ts` : Blob + lien temporaire.
 
 ## UI (`src/ui/`, Svelte 5)
@@ -101,7 +101,7 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 
 - `geometry/` : aire > 0, `B` contient `L` (L − B vide), bornes cohérentes avec fontSize, trou bien soustrait (aire diminuée de πr²).
 - `mesh/` : maillage étanche (chaque arête partagée par exactement 2 triangles), volume > 0, orientation sortante.
-- `export/` : 3MF dézippable, XML parsable, 2 objets ; SVG avec bonnes dimensions mm.
+- `export/` : 3MF dézippable, XML parsable, 2 objets maillés regroupés dans un objet parent à composants, un seul `<item>` ; SVG avec bonnes dimensions mm.
 - Manuel : import du 3MF dans Bambu Studio / PrusaSlicer, des SVG dans LightBurn / Inkscape.
 
 ## Hors scope
