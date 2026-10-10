@@ -33,7 +33,7 @@ Page web où l'utilisateur saisit un texte, choisit police et paramètres, ajout
 | Groupe | Paramètre | Défaut |
 |---|---|---|
 | Texte | `text` | `"Luigi"` |
-| Police | `fontId` (embarquée ou importée) | `pacifico` |
+| Police | `fontId` (embarquée ou importée) | `fredoka` |
 | | `fontSize` (mm, hauteur em) | 30 |
 | | `textWeight` (mm, offset de graissage, ≥ 0) | 0 |
 | | `letterSpacing` (mm) | 0.3 |
