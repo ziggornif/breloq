@@ -38,4 +38,4 @@ npm run build    # build statique dans dist/
 
 ## Licence
 
-MIT
+GNU General Public License v3.0
