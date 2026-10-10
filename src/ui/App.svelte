@@ -5,7 +5,7 @@
   import { buildKeychain, type KeychainGeometry } from '../geometry/keychain';
   import { buildMeshes } from '../mesh/keychain3d';
   import { build3mf } from '../export/threemf';
-  import { fileBaseName } from '../export/bundle';
+  import { fileBaseName } from '../export/filename';
   import { laserSvg } from '../export/svg';
   import { download } from '../export/download';
   import { importFont, listFonts, loadFont, type FontEntry } from '../fonts/registry';
