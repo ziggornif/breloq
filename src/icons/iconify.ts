@@ -102,14 +102,15 @@ export function parseIconResponse(data: unknown, name: string): IconSvg {
 
 const cache = new Map<string, Promise<IconSvg>>();
 
-async function fetchPrefix(prefix: string, names: string[]): Promise<unknown> {
-  const url = `${ICONIFY_API}/${prefix}.json?icons=${names.join(",")}`; // noms validés par normalizeIconId
+/** `what` complète le message d'erreur : « Chargement <what> impossible ». */
+async function fetchPrefix(prefix: string, names: string[], what: string): Promise<unknown> {
+  const url = `${ICONIFY_API}/${prefix}.json?icons=${names.join(',')}`; // noms validés par normalizeIconId
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { prefix, ...((await res.json()) as object) };
   } catch (e) {
-    throw new Error(`Chargement des icônes ${prefix} impossible (${(e as Error).message})`);
+    throw new Error(`Chargement ${what} impossible (${(e as Error).message})`);
   }
 }
 
@@ -129,7 +130,7 @@ export async function loadIcons(rawIds: string[]): Promise<Map<string, IconSvg>>
     missing.set(prefix, [...(missing.get(prefix) ?? []), name]);
   }
   await Promise.all([...missing].map(async ([prefix, names]) => {
-    const data = await fetchPrefix(prefix, names);
+    const data = await fetchPrefix(prefix, names, `des icônes ${prefix}`);
     for (const name of names) {
       try {
         const icon = parseIconResponse(data, name);
@@ -148,17 +149,7 @@ export function loadIcon(rawId: string): Promise<IconSvg> {
   let p = cache.get(id);
   if (!p) {
     const [prefix, name] = split(id);
-    p = (async () => {
-      let data: unknown;
-      try {
-        const res = await fetch(`${ICONIFY_API}/${prefix}.json?icons=${encodeURIComponent(name)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        data = await res.json();
-      } catch (e) {
-        throw new Error(`Chargement de l'icône ${id} impossible (${(e as Error).message})`);
-      }
-      return parseIconResponse({ prefix, ...(data as object) }, name);
-    })();
+    p = fetchPrefix(prefix, [name], `de l'icône ${id}`).then((data) => parseIconResponse(data, name));
     p.catch(() => cache.delete(id));
     cache.set(id, p);
   }
