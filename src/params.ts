@@ -29,7 +29,7 @@ export interface KeychainParams {
 }
 
 export const DEFAULT_PARAMS: KeychainParams = {
-  text: 'Lexie',
+  text: 'Luigi',
   fontId: 'pacifico',
   fontSize: 30,
   textWeight: 0,
