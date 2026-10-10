@@ -4,14 +4,13 @@
   import NumberField from './NumberField.svelte';
 
   let {
-    params = $bindable(), fonts, canExport, iconLabel, onexport, onexportxtool, onimportfont, onpickicon,
+    params = $bindable(), fonts, canExport, iconLabel, onexport, onimportfont, onpickicon,
   }: {
     params: KeychainParams;
     fonts: FontEntry[];
     canExport: boolean;
     iconLabel: string;
     onexport: () => void;
-    onexportxtool: () => void;
     onimportfont: (f: File) => void;
     onpickicon: () => void;
   } = $props();
@@ -91,11 +90,8 @@
 
   <div class="actions">
     <button class="primary" disabled={!canExport} onclick={onexport}>
-      Exporter {params.mode === 'laser' ? '(2 SVG)' : '(3MF)'}
+      Exporter {params.mode === 'laser' ? '(SVG)' : '(3MF)'}
     </button>
-    {#if params.mode === 'laser'}
-      <button class="secondary" disabled={!canExport} onclick={onexportxtool}>Exporter pour xTool Studio</button>
-    {/if}
   </div>
 </aside>
 
@@ -118,6 +114,4 @@
   .actions { margin-top: auto; position: sticky; bottom: 0; background: var(--panel); padding-top: 8px; }
   .primary { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-size: 16px; font-weight: 600; }
   .primary:disabled { opacity: 0.4; cursor: not-allowed; }
-  .secondary { width: 100%; margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text); font-size: 15px; font-weight: 600; }
-  .secondary:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>

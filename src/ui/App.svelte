@@ -5,8 +5,8 @@
   import { buildKeychain, type KeychainGeometry } from '../geometry/keychain';
   import { buildMeshes } from '../mesh/keychain3d';
   import { build3mf } from '../export/threemf';
-  import { fileBaseName, laserZip } from '../export/bundle';
-  import { xtoolSvg } from '../export/svg';
+  import { fileBaseName } from '../export/bundle';
+  import { laserSvg } from '../export/svg';
   import { download } from '../export/download';
   import { importFont, listFonts, loadFont, type FontEntry } from '../fonts/registry';
   import { loadIcons, type IconEntry } from '../icons/icons';
@@ -117,21 +117,12 @@
     }
   }
 
-  function onexportxtool() {
-    if (!geometry) return;
-    try {
-      download(xtoolSvg(geometry), `${fileBaseName(params.text)}-xtool.svg`, 'image/svg+xml');
-    } catch (e) {
-      notify(`Export impossible : ${(e as Error).message}`);
-    }
-  }
-
   function onexport() {
     if (!geometry) return;
     try {
       const name = fileBaseName(params.text);
       if (params.mode === 'laser') {
-        download(laserZip(geometry), `${name}-laser.zip`, 'application/zip');
+        download(laserSvg(geometry), `${name}-laser.svg`, 'image/svg+xml');
       } else {
         const m = buildMeshes(geometry, sanitize($state.snapshot(params)));
         download(build3mf([
@@ -167,7 +158,7 @@
 
   <Panel bind:params {fonts} canExport={!!geometry}
     iconLabel={params.iconName.replace(/-fill$/, '')}
-    {onexport} {onexportxtool} {onimportfont} onpickicon={() => (pickerOpen = true)} />
+    {onexport} {onimportfont} onpickicon={() => (pickerOpen = true)} />
 
   {#if pickerOpen}
     <IconPicker {icons} failed={iconsError} selected={params.iconName}

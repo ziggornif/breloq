@@ -18,26 +18,20 @@ ${body}
 `;
 }
 
-/** SVG en mm, trait fin (découpe laser), un sous-chemin par contour. */
-export function shapeToSvg(s: Shape, width: number, height: number, stroke = '#ff0000'): string {
-  return svgDoc(width, height,
-    `  <path d="${pathData(s)}" fill="none" fill-rule="evenodd" stroke="${stroke}" stroke-width="0.01"/>`);
-}
-
-const XTOOL_GAP = 10;
+const LASER_GAP = 10;
 
 /**
- * Fichier unique pour xTool Studio (même convention que l'export Atomm) : base découpée avec
+ * Export laser en un seul fichier (même convention que l'export Atomm) : base découpée avec
  * l'emplacement des lettres en marquage, puis les lettres découpées en dessous.
- * `data-processing-type` et les couleurs créent directement les couches Cut / Score.
+ * `data-processing-type` et les couleurs créent directement les couches Cut / Score dans xTool Studio.
  */
-export function xtoolSvg(g: { base: Shape; letters: Shape; width: number; height: number }): string {
+export function laserSvg(g: { base: Shape; letters: Shape; width: number; height: number }): string {
   const path = (d: string, type: 'VECTOR_CUTTING' | 'VECTOR_ENGRAVING') =>
     `  <path data-processing-type="${type}" d="${d}" fill="none" fill-rule="evenodd" stroke="${
       type === 'VECTOR_CUTTING' ? '#cc3333' : '#3333cc'}" stroke-width="0.1"/>`;
-  return svgDoc(g.width, g.height * 2 + XTOOL_GAP, [
+  return svgDoc(g.width, g.height * 2 + LASER_GAP, [
     path(pathData(g.base), 'VECTOR_CUTTING'),
     path(pathData(g.letters), 'VECTOR_ENGRAVING'),
-    path(pathData(g.letters, g.height + XTOOL_GAP), 'VECTOR_CUTTING'),
+    path(pathData(g.letters, g.height + LASER_GAP), 'VECTOR_CUTTING'),
   ].join('\n'));
 }

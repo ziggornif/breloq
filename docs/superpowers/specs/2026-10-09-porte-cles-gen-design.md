@@ -7,7 +7,7 @@ Inspiration : https://www.atomm.com/fr/parametric-template/176172-porte-cles-lex
 
 Page web où l'utilisateur saisit un texte, choisit police et paramètres, ajoute éventuellement une icône et un trou d'attache, puis exporte :
 
-- **Laser** : deux SVG à découper (base + lettres) qui se collent l'un sur l'autre.
+- **Laser** : un SVG unique (base + lettres à découper, emplacement des lettres marqué sur la base) ; les lettres se collent sur la base.
 - **Impression 3D** : un `.3mf` contenant deux objets (base + lettres en relief), les lettres s'emboîtant dans une poche peu profonde de la base.
 
 ## Contraintes
@@ -23,7 +23,7 @@ Page web où l'utilisateur saisit un texte, choisit police et paramètres, ajout
 - `clipper2-js` (ou équivalent Clipper2) : union, offset, différence de polygones
 - `earcut` : triangulation des faces
 - `three` : aperçu 3D uniquement (OrbitControls)
-- `fflate` : zip (3MF et pack SVG)
+- `fflate` : zip du 3MF
 - `remixicon` : source des icônes (Apache 2.0), indexée au build
 - Polices Google Fonts (OFL) embarquées dans `public/fonts/`
 - Vitest pour les tests
@@ -74,8 +74,9 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 
 ## Exports (`src/export/`)
 
-- `svg.ts` : `toSvg(polygons, bounds)` → SVG avec `width/height` en mm et `viewBox` en mm, un `<path>` par polygone (`fill="none" stroke="#ff0000" stroke-width="0.01"`).
-  - Laser : `base.svg` (B avec trou) + `lettres.svg` (L ∪ I), zippés dans `<texte>-laser.zip`.
+- `svg.ts` : `laserSvg(geometry)` → un seul `<texte>-laser.svg`, `width/height` et `viewBox` en mm (convention de l'export Atomm, lue par xTool Studio) :
+  - en haut : base B découpée (`data-processing-type="VECTOR_CUTTING"`, `stroke="#cc3333"`) + contour des lettres en marquage (`VECTOR_ENGRAVING`, `stroke="#3333cc"`) pour le positionnement ;
+  - en dessous, 10 mm plus bas : lettres L ∪ I découpées.
 - `threemf.ts` : 3MF Core minimal : `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` avec `unit="millimeter"`, un `<basematerials>` à deux couleurs, deux objets maillés (`name="base"`, `name="lettres"`) regroupés dans un objet parent à `<components>`, un seul `<item>` dans `<build>`. Fichier `<texte>.3mf`.
 - `download.ts` : Blob + lien temporaire.
 
@@ -101,8 +102,8 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 
 - `geometry/` : aire > 0, `B` contient `L` (L − B vide), bornes cohérentes avec fontSize, trou bien soustrait (aire diminuée de πr²).
 - `mesh/` : maillage étanche (chaque arête partagée par exactement 2 triangles), volume > 0, orientation sortante.
-- `export/` : 3MF dézippable, XML parsable, 2 objets maillés regroupés dans un objet parent à composants, un seul `<item>` ; SVG avec bonnes dimensions mm.
-- Manuel : import du 3MF dans Bambu Studio / PrusaSlicer, des SVG dans LightBurn / Inkscape.
+- `export/` : 3MF dézippable, XML parsable, 2 objets maillés regroupés dans un objet parent à composants, un seul `<item>` ; SVG laser unique avec bonnes dimensions mm et les 3 tracés (découpe base, marquage, découpe lettres).
+- Manuel : import du 3MF dans Bambu Studio / PrusaSlicer, du SVG dans xTool Studio / LightBurn / Inkscape.
 
 ## Hors scope
 
