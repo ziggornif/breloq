@@ -9,7 +9,7 @@
   import { laserSvg } from '../export/svg';
   import { download } from '../export/download';
   import { importFont, listFonts, loadFont, type FontEntry } from '../fonts/registry';
-  import { iconImageUrl, loadIcon } from '../icons/iconify';
+  import { iconDataUri, loadIcon } from '../icons/iconify';
   import { iconToShape, type IconSvg } from '../geometry/svgicon';
   import IconPicker from './IconPicker.svelte';
   import Panel from './Panel.svelte';
@@ -166,7 +166,7 @@
   </div>
 
   <Panel bind:params {fonts} canExport={!!geometry}
-    iconLabel={iconLabel(params.iconName)} iconUrl={iconImageUrl(params.iconName)}
+    iconLabel={iconLabel(params.iconName)} iconUrl={icon ? iconDataUri(icon) : ''}
     {onexport} {onimportfont} onpickicon={() => (pickerOpen = true)} />
 
   {#if pickerOpen}

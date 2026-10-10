@@ -30,9 +30,48 @@ describe('normalizeIconId', () => {
   });
 });
 
-describe('iconImageUrl', () => {
-  it('points at the API SVG endpoint', () => {
-    expect(mod.iconImageUrl('mdi:heart')).toBe('https://api.iconify.design/mdi/heart.svg');
+describe('iconDataUri', () => {
+  it('builds a local SVG data URI from the icon body (no request per thumbnail)', () => {
+    const uri = mod.iconDataUri({ body: '<path fill="currentColor" d="M0 0h4v4H0z"/>', left: 0, top: 0, width: 24, height: 24 });
+    expect(uri.startsWith('data:image/svg+xml,')).toBe(true);
+    const svg = decodeURIComponent(uri.slice('data:image/svg+xml,'.length));
+    expect(svg).toContain('viewBox="0 0 24 24"');
+    expect(svg).toContain('<path fill="currentColor" d="M0 0h4v4H0z"/>');
+  });
+});
+
+describe('loadIcons', () => {
+  it('fetches one batch per prefix and fills the cache used by loadIcon', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const u = new URL(url);
+      const prefix = u.pathname.slice(1, -'.json'.length);
+      const names = u.searchParams.get('icons')!.split(',');
+      return json({ prefix, width: 24, height: 24, icons: Object.fromEntries(names.map((n) => [n, { body: `<path d="M0 0h1v1z" id="${n}"/>` }])) });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const got = await mod.loadIcons(['mdi:heart', 'mdi:star', 'ri:ghost-fill']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const urls = fetchMock.mock.calls.map((c) => c[0] as string).sort();
+    expect(urls).toEqual([
+      'https://api.iconify.design/mdi.json?icons=heart,star',
+      'https://api.iconify.design/ri.json?icons=ghost-fill',
+    ]);
+    expect([...got.keys()].sort()).toEqual(['mdi:heart', 'mdi:star', 'ri:ghost-fill']);
+    await mod.loadIcon('mdi:star');
+    expect(fetchMock).toHaveBeenCalledTimes(2); // déjà en cache
+  });
+
+  it('omits icons missing from a batch and does not fail the others', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ prefix: 'mdi', icons: { heart: { body: '<path d="M0 0h1v1z"/>' } } })));
+    const got = await mod.loadIcons(['mdi:heart', 'mdi:nope']);
+    expect([...got.keys()]).toEqual(['mdi:heart']);
+  });
+
+  it('rejects when a batch request fails, without caching the failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({}, 429)));
+    await expect(mod.loadIcons(['mdi:heart'])).rejects.toThrow(/HTTP 429/);
+    vi.stubGlobal('fetch', vi.fn(async () => json({ prefix: 'mdi', icons: { heart: { body: '<path d="M0 0h1v1z"/>' } } })));
+    await expect(mod.loadIcon('mdi:heart')).resolves.toBeTruthy();
   });
 });
 

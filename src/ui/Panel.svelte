@@ -51,7 +51,7 @@
     </div>
     {#if params.iconEnabled}
       <button class="ghost wide icon-pick" onclick={onpickicon}>
-        <img src={iconUrl} alt="" width="20" height="20" />
+        {#if iconUrl}<img src={iconUrl} alt="" width="20" height="20" />{/if}
         <span>{iconLabel}</span> ›
       </button>
       <NumberField label="Taille" bind:value={params.iconSize} step={0.5} min={3} max={100} />

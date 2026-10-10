@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { ICON_CATEGORIES, iconImageUrl, searchIcons } from '../icons/iconify';
+  import { ICON_CATEGORIES, iconDataUri, loadIcons, searchIcons } from '../icons/iconify';
+  import type { IconSvg } from '../geometry/svgicon';
 
   let { selected, onselect, onclose }: {
     selected: string;
@@ -12,6 +13,7 @@
   let query = $state('');
   let category = $state(ICON_CATEGORIES[0]);
   let results = $state<string[]>([]);
+  let thumbs = $state.raw(new Map<string, IconSvg>());
   let status = $state<'loading' | 'ok' | 'error'>('loading');
   let errorMsg = $state('');
   let attempt = $state(0);
@@ -28,7 +30,14 @@
     status = 'loading';
     const t = setTimeout(() => {
       searchIcons(q, ctrl.signal)
-        .then((r) => { results = r; status = 'ok'; })
+        .then(async (r) => {
+          // une requête par jeu d'icônes pour les vignettes (au lieu d'une par icône)
+          const t = await loadIcons(r).catch(() => new Map<string, IconSvg>());
+          if (ctrl.signal.aborted) return;
+          results = r;
+          thumbs = t;
+          status = 'ok';
+        })
         .catch((e: Error) => {
           if (ctrl.signal.aborted) return;
           errorMsg = e.message;
@@ -69,7 +78,11 @@
       {#each results as id (id)}
         <button class="icon" class:on={id === selected} title={id}
           onclick={() => { onselect(id); onclose(); }}>
-          <img src={iconImageUrl(id)} alt={id} loading="lazy" width="36" height="36" />
+          {#if thumbs.get(id)}
+            <img src={iconDataUri(thumbs.get(id)!)} alt={id} width="36" height="36" />
+          {:else}
+            <span class="noimg" aria-hidden="true">?</span>
+          {/if}
           <span>{label(id)}</span>
         </button>
       {/each}
@@ -90,7 +103,8 @@
   .grid[aria-busy='true'] { opacity: 0.6; }
   .icon { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 10px 4px; min-width: 0; }
   .icon.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .icon img { width: 36px; height: 36px; }
+  .icon img, .icon .noimg { width: 36px; height: 36px; }
+  .icon .noimg { display: grid; place-items: center; font-size: 18px; color: var(--muted); }
   .icon span { font-size: 11px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .muted { color: var(--muted); }
   .error { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #b91c1c; }

@@ -39,9 +39,13 @@ function split(id: string): [string, string] {
   return [id.slice(0, i), id.slice(i + 1)];
 }
 
-export function iconImageUrl(id: string): string {
-  const [prefix, name] = split(normalizeIconId(id) ?? id);
-  return `${ICONIFY_API}/${prefix}/${name}.svg`;
+/**
+ * Vignette locale (data URI) : construite à partir du corps déjà chargé, affichée via <img> —
+ * le SVG tiers n'est jamais injecté dans la page et ne peut pas exécuter de script.
+ */
+export function iconDataUri(icon: IconSvg): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${icon.left} ${icon.top} ${icon.width} ${icon.height}" style="color:#3f3f46">${icon.body}</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 /** Les « -line » MingCute sont des tracés de contour (stroke) : rien à découper. */
@@ -80,6 +84,45 @@ export function parseIconResponse(data: unknown, name: string): IconSvg {
 }
 
 const cache = new Map<string, Promise<IconSvg>>();
+
+async function fetchPrefix(prefix: string, names: string[]): Promise<unknown> {
+  const url = `${ICONIFY_API}/${prefix}.json?icons=${names.join(",")}`; // noms validés par normalizeIconId
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { prefix, ...((await res.json()) as object) };
+  } catch (e) {
+    throw new Error(`Chargement des icônes ${prefix} impossible (${(e as Error).message})`);
+  }
+}
+
+/**
+ * Charge plusieurs icônes en une requête par jeu (l'API limite le nombre d'appels : une requête
+ * par vignette déclenche des 429). Remplit le cache de `loadIcon` ; les icônes absentes sont omises.
+ */
+export async function loadIcons(rawIds: string[]): Promise<Map<string, IconSvg>> {
+  const out = new Map<string, IconSvg>();
+  const missing = new Map<string, string[]>();
+  for (const raw of rawIds) {
+    const id = normalizeIconId(raw);
+    if (!id) continue;
+    const hit = cache.get(id);
+    if (hit) { out.set(id, await hit); continue; }
+    const [prefix, name] = split(id);
+    missing.set(prefix, [...(missing.get(prefix) ?? []), name]);
+  }
+  await Promise.all([...missing].map(async ([prefix, names]) => {
+    const data = await fetchPrefix(prefix, names);
+    for (const name of names) {
+      try {
+        const icon = parseIconResponse(data, name);
+        cache.set(`${prefix}:${name}`, Promise.resolve(icon));
+        out.set(`${prefix}:${name}`, icon);
+      } catch { /* icône absente du lot : omise */ }
+    }
+  }));
+  return out;
+}
 
 /** Charge le corps SVG d'une icône (mis en cache par id ; les échecs ne sont pas mis en cache). */
 export function loadIcon(rawId: string): Promise<IconSvg> {
