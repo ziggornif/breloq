@@ -4,12 +4,13 @@
   import NumberField from './NumberField.svelte';
 
   let {
-    params = $bindable(), fonts, canExport, iconLabel, onexport, onimportfont, onpickicon,
+    params = $bindable(), fonts, canExport, iconLabel, iconUrl, onexport, onimportfont, onpickicon,
   }: {
     params: KeychainParams;
     fonts: FontEntry[];
     canExport: boolean;
     iconLabel: string;
+    iconUrl: string;
     onexport: () => void;
     onimportfont: (f: File) => void;
     onpickicon: () => void;
@@ -49,7 +50,10 @@
       <input type="checkbox" class="toggle" bind:checked={params.iconEnabled} />
     </div>
     {#if params.iconEnabled}
-      <button class="ghost wide" onclick={onpickicon}>{iconLabel} ›</button>
+      <button class="ghost wide icon-pick" onclick={onpickicon}>
+        <img src={iconUrl} alt="" width="20" height="20" />
+        <span>{iconLabel}</span> ›
+      </button>
       <NumberField label="Taille" bind:value={params.iconSize} step={0.5} min={3} max={100} />
       <NumberField label="Espacement" bind:value={params.iconGap} min={0} max={30} />
     {/if}
@@ -106,6 +110,8 @@
   select { flex: 1; padding: 8px; border-radius: 8px; border: 0; background: #f4f4f5; font-size: 18px; }
   .ghost { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
   .wide { width: 100%; text-align: left; margin: 8px 0; }
+.icon-pick { display: flex; align-items: center; gap: 8px; }
+.icon-pick span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .seg { display: flex; background: #f4f4f5; border-radius: 8px; padding: 3px; margin: 6px 0; }
   .seg button { flex: 1; border: 0; background: transparent; padding: 6px; border-radius: 6px; color: var(--muted); }
   .seg button.on { background: #fff; color: var(--text); box-shadow: 0 1px 2px #0002; }

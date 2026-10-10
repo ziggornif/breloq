@@ -1,3 +1,5 @@
+import { normalizeIconId } from './icons/iconify';
+
 export type HolePosition = 'left' | 'right' | 'top';
 export type Mode = 'laser' | 'print3d';
 
@@ -34,7 +36,7 @@ export const DEFAULT_PARAMS: KeychainParams = {
   letterSpacing: 0.3,
   outlineWidth: 3,
   iconEnabled: false,
-  iconName: 'emotion-laugh-fill',
+  iconName: 'ri:emotion-laugh-fill',
   iconSize: 20,
   iconGap: 2,
   holeEnabled: true,
@@ -88,6 +90,11 @@ export function sanitize(raw: unknown): KeychainParams {
       const allowed = ENUMS[key];
       if (allowed && !allowed.includes(v)) continue;
       if (key.endsWith('Color') && !COLOR.test(v)) continue;
+      if (key === 'iconName') {
+        const id = normalizeIconId(v);
+        if (id) out[key] = id;
+        continue;
+      }
       out[key] = key === 'text' ? Array.from(v).slice(0, TEXT_MAX_CHARS).join('') : v;
     } else {
       out[key] = v;

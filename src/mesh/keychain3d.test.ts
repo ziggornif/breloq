@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { buildKeychain } from '../geometry/keychain';
 import { buildMeshes } from './keychain3d';
 import { isClosedByPosition, isWatertight, volume } from './check';
-import icons from '../icons/icons.json';
+import { parseIconResponse } from '../icons/iconify';
+import { FIXTURES } from '../test/iconify-fixtures';
 import { DEFAULT_PARAMS } from '../params';
 import { loadTestFont } from '../test/fonts';
 
@@ -39,11 +40,12 @@ describe('buildMeshes', () => {
     expect(volume(pocketed.base)).toBeLessThan(volume(solid.base));
   });
 
-  it.each(['emotion-laugh-fill', 'lock-fill', 'corner-right-up-fill', 'battery-charge-fill'])(
-    'icon %s: meshes stay closed once a slicer welds vertices by position', (name) => {
-      const path = (icons as { name: string; path: string }[]).find((i) => i.name === name)!.path;
+  it.each(['ri:emotion-laugh-fill', 'ri:lock-fill', 'ri:corner-right-up-fill', 'ri:battery-charge-fill',
+    'mingcute:music-fill', 'game-icons:cat', 'bi:arrow-down-circle', 'fa6-solid:cat'])(
+    'icon %s: meshes stay closed once a slicer welds vertices by position', (id) => {
+      const icon = parseIconResponse(FIXTURES[id], id.split(':')[1]);
       const p = { ...DEFAULT_PARAMS, iconEnabled: true };
-      const m = buildMeshes(buildKeychain(p, font, path)!, p);
+      const m = buildMeshes(buildKeychain(p, font, icon)!, p);
       expect(isClosedByPosition(m.letters)).toBe(true);
       expect(isClosedByPosition(m.base)).toBe(true);
     });

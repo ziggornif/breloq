@@ -3,8 +3,7 @@ import type { KeychainParams } from '../params';
 import {
   area, bounds, circle, difference, intersect, offset, outerOnly, translate, union,
 } from './clip';
-import { flattenCommands } from './flatten';
-import { parseSvgPath } from './svgpath';
+import { iconToShape, type IconSvg } from './svgicon';
 import { textToShape } from './text';
 import type { Shape } from './types';
 
@@ -16,23 +15,18 @@ export interface KeychainGeometry {
   missing: string[];
 }
 
-const ICON_VIEWBOX = 24;
-
-export function buildKeychain(p: KeychainParams, font: Font, iconPath?: string): KeychainGeometry | null {
+export function buildKeychain(p: KeychainParams, font: Font, icon?: IconSvg): KeychainGeometry | null {
   const t = textToShape(font, { text: p.text, fontSize: p.fontSize, letterSpacing: p.letterSpacing });
   let letters = t.shape;
   if (p.textWeight > 0 && letters.length) letters = offset(letters, p.textWeight / 2);
 
-  if (p.iconEnabled && iconPath) {
+  if (p.iconEnabled && icon) {
     const tb = bounds(letters) ?? { minX: 0, maxX: 0, minY: -p.fontSize * 0.7, maxY: 0 };
-    const k = p.iconSize / ICON_VIEWBOX;
-    const raw = flattenCommands(parseSvgPath(iconPath, k));
-    const ib = bounds(raw);
-    if (ib) {
-      const dx = tb.minX - p.iconGap - ib.maxX;
-      const dy = (tb.minY + tb.maxY) / 2 - (ib.minY + ib.maxY) / 2;
-      letters = union(letters, translate(union(raw), dx, dy));
-    }
+    const shape = iconToShape(icon, p.iconSize);
+    const ib = bounds(shape)!;
+    const dx = tb.minX - p.iconGap - ib.maxX;
+    const dy = (tb.minY + tb.maxY) / 2 - (ib.minY + ib.maxY) / 2;
+    letters = union(letters, translate(shape, dx, dy));
   }
   if (letters.length === 0) return null;
 

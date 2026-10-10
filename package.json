@@ -4,11 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "icons": "node scripts/build-icons.mjs",
-    "dev": "npm run icons && vite",
-    "build": "npm run icons && vite build",
+    "dev": "vite",
+    "build": "vite build",
     "preview": "vite preview",
-    "pretest": "npm run icons",
     "test": "vitest run",
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
@@ -31,7 +29,6 @@
     "earcut": "^3.2.4",
     "fflate": "^0.8.3",
     "opentype.js": "^2.0.0",
-    "remixicon": "^4.9.1",
     "three": "^0.186.1"
   },
   "devDependencies": {

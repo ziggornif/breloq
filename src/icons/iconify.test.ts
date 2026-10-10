@@ -41,7 +41,7 @@ describe('searchIcons', () => {
     const fetch = vi.fn(async () => json({ icons: ['mdi:middleware', 'mingcute:middle-finger-fill'], total: 2 }));
     vi.stubGlobal('fetch', fetch);
     await expect(mod.searchIcons('  middl ')).resolves.toEqual(['mdi:middleware', 'mingcute:middle-finger-fill']);
-    const url = new URL(fetch.mock.calls[0][0] as unknown as string);
+    const url = new URL(String((fetch.mock.calls[0] as unknown[])[0]));
     expect(url.origin + url.pathname).toBe('https://api.iconify.design/search');
     expect(url.searchParams.get('query')).toBe('middl');
     expect(url.searchParams.get('limit')).toBe('48');
@@ -82,7 +82,7 @@ describe('loadIcon', () => {
     const fetch = vi.fn(async () => json(FIXTURES['mdi:heart']));
     vi.stubGlobal('fetch', fetch);
     const icon = await mod.loadIcon('mdi:heart');
-    expect(fetch.mock.calls[0][0]).toBe('https://api.iconify.design/mdi.json?icons=heart');
+    expect((fetch.mock.calls[0] as unknown[])[0]).toBe('https://api.iconify.design/mdi.json?icons=heart');
     expect(icon).toMatchObject({ left: 0, top: 0, width: 24, height: 24 });
     expect(icon.body).toContain('<path');
   });
@@ -106,7 +106,7 @@ describe('loadIcon', () => {
     const fetch = vi.fn(async () => json({ prefix: 'ri', width: 24, height: 24, icons: { 'emotion-laugh-fill': { body: '<path d="M0 0h1v1z"/>' } } }));
     vi.stubGlobal('fetch', fetch);
     await mod.loadIcon('emotion-laugh-fill');
-    expect(fetch.mock.calls[0][0]).toBe('https://api.iconify.design/ri.json?icons=emotion-laugh-fill');
+    expect((fetch.mock.calls[0] as unknown[])[0]).toBe('https://api.iconify.design/ri.json?icons=emotion-laugh-fill');
   });
 
   it('rejects unknown icons and malformed responses', async () => {

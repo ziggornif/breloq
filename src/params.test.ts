@@ -38,6 +38,13 @@ describe('params', () => {
     expect(sanitize({ baseColor: '#00ff00' }).baseColor).toBe('#00ff00');
   });
 
+  it('icon ids are prefix:name, legacy Remix names read as ri:<name>', () => {
+    expect(DEFAULT_PARAMS.iconName).toBe('ri:emotion-laugh-fill');
+    expect(sanitize({ iconName: 'heart-fill' }).iconName).toBe('ri:heart-fill');
+    expect(sanitize({ iconName: 'game-icons:cat' }).iconName).toBe('game-icons:cat');
+    expect(sanitize({ iconName: '../../evil' }).iconName).toBe(DEFAULT_PARAMS.iconName);
+  });
+
   it('sanitize leaves DEFAULT_PARAMS unchanged', () => {
     expect(sanitize(DEFAULT_PARAMS)).toEqual(DEFAULT_PARAMS);
   });

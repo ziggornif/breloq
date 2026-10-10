@@ -3,10 +3,16 @@ import { buildKeychain, type KeychainGeometry } from './keychain';
 import { area, bounds, difference, isOuter, toShape } from './clip';
 import { DEFAULT_PARAMS, type KeychainParams } from '../params';
 import { loadTestFont } from '../test/fonts';
+import { FIXTURES } from '../test/iconify-fixtures';
+import { parseIconResponse } from '../icons/iconify';
+import type { IconSvg } from './svgicon';
 
 const font = loadTestFont();
 const P = (o: Partial<KeychainParams> = {}): KeychainParams => ({ ...DEFAULT_PARAMS, ...o });
-const SMILEY = 'M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z';
+const SMILEY: IconSvg = {
+  body: '<path fill="currentColor" d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z"/>',
+  left: 0, top: 0, width: 24, height: 24,
+};
 const outers = (g: KeychainGeometry) => g.base.filter(isOuter);
 const holes = (g: KeychainGeometry) => g.base.filter((p) => !isOuter(p));
 
@@ -54,6 +60,18 @@ describe('buildKeychain', () => {
     const g = buildKeychain(P({ holeEnabled: false, iconEnabled: true, iconSize: 20, iconGap: 2 }), font, SMILEY)!;
     // le disque du smiley fait 20 unités sur 24 → 20 * 20/24 mm, plus iconGap
     expect(g.width).toBeCloseTo(without.width + 20 * (20 / 24) + 2, 0);
+  });
+
+  it('icon from a 16-unit viewBox (bi:circle-fill) adds its full size plus the gap', () => {
+    const without = buildKeychain(P({ holeEnabled: false }), font)!;
+    const icon = parseIconResponse(FIXTURES['bi:circle-fill'], 'circle-fill');
+    const g = buildKeychain(P({ holeEnabled: false, iconEnabled: true, iconSize: 12, iconGap: 3 }), font, icon)!;
+    expect(g.width).toBeCloseTo(without.width + 12 + 3, 0);
+  });
+
+  it('icon is ignored when disabled', () => {
+    const without = buildKeychain(P({ holeEnabled: false }), font)!;
+    expect(buildKeychain(P({ holeEnabled: false, iconEnabled: false }), font, SMILEY)!.width).toBeCloseTo(without.width, 3);
   });
 
   it('textWeight thickens letters', () => {

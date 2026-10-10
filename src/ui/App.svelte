@@ -9,7 +9,8 @@
   import { laserSvg } from '../export/svg';
   import { download } from '../export/download';
   import { importFont, listFonts, loadFont, type FontEntry } from '../fonts/registry';
-  import { loadIcons, type IconEntry } from '../icons/icons';
+  import { iconImageUrl, loadIcon } from '../icons/iconify';
+  import { iconToShape, type IconSvg } from '../geometry/svgicon';
   import IconPicker from './IconPicker.svelte';
   import Panel from './Panel.svelte';
   import Preview2D from './Preview2D.svelte';
@@ -30,13 +31,14 @@
   let params = $state<KeychainParams>(initialParams());
   let fonts = $state<FontEntry[]>(listFonts());
   let font = $state<Font | null>(null);
-  let icons = $state<IconEntry[]>([]);
+  let icon = $state.raw<IconSvg | undefined>(undefined);
   let geometry = $state<KeychainGeometry | null>(null);
   let error = $state<string | null>(null);
   let toast = $state<string | null>(null);
   let view = $state<'2d' | '3d'>('2d');
   let pickerOpen = $state(false);
   let lastGoodFontId = untrack(() => params.fontId);
+  let lastGoodIconName = untrack(() => params.iconName);
 
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
   function notify(msg: string) {
@@ -60,33 +62,35 @@
     return () => { cancelled = true; };
   });
 
-  // icônes (lazy)
-  let iconsRequested = false;
-  let iconsError = $state(false);
+  // icône (API Iconify, chargée seulement si activée)
   $effect(() => {
-    if ((params.iconEnabled || pickerOpen) && !iconsRequested) {
-      iconsRequested = true;
-      iconsError = false;
-      loadIcons()
-        .then((l) => (icons = l))
-        .catch((e: Error) => {
-          iconsRequested = false;
-          iconsError = true;
-          notify(`Chargement des icônes impossible : ${e.message}`);
-        });
-    }
+    if (!params.iconEnabled) return;
+    const id = params.iconName;
+    let cancelled = false;
+    loadIcon(id)
+      .then((data) => {
+        if (cancelled) return;
+        iconToShape(data, 10); // lève « Icône non prise en charge » avant d'abîmer l'aperçu
+        icon = data;
+        lastGoodIconName = id;
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        notify(e.message);
+        if (id !== lastGoodIconName) params.iconName = lastGoodIconName;
+      });
+    return () => { cancelled = true; };
   });
-  let iconPath = $derived(icons.find((i) => i.name === params.iconName)?.path);
 
   // géométrie (debounce)
   $effect(() => {
     const snapshot = sanitize($state.snapshot(params));
     const f = font;
-    const ip = iconPath;
+    const ic = icon;
     const t = setTimeout(() => {
       if (!f) return;
       try {
-        geometry = buildKeychain(snapshot, f, ip);
+        geometry = buildKeychain(snapshot, f, ic);
         error = null;
       } catch (e) {
         geometry = null;
@@ -106,6 +110,11 @@
     }, 300);
     return () => clearTimeout(t);
   });
+
+  function iconLabel(id: string) {
+    const i = id.indexOf(':');
+    return `${id.slice(i + 1)} (${id.slice(0, i)})`;
+  }
 
   async function onimportfont(file: File) {
     try {
@@ -157,11 +166,11 @@
   </div>
 
   <Panel bind:params {fonts} canExport={!!geometry}
-    iconLabel={params.iconName.replace(/-fill$/, '')}
+    iconLabel={iconLabel(params.iconName)} iconUrl={iconImageUrl(params.iconName)}
     {onexport} {onimportfont} onpickicon={() => (pickerOpen = true)} />
 
   {#if pickerOpen}
-    <IconPicker {icons} failed={iconsError} selected={params.iconName}
+    <IconPicker selected={params.iconName}
       onselect={(n) => (params.iconName = n)} onclose={() => (pickerOpen = false)} />
   {/if}
 
