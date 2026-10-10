@@ -4,9 +4,9 @@
 
 **Goal:** Page web statique qui génère un porte-clés texte (+ icône, + trou) et l'exporte en 2 SVG laser ou en 3MF bi-objet pour l'impression 3D.
 
-**Architecture:** Toute la géométrie est 2D (polygones entiers en µm via Clipper2), calculée par des modules TS purs (`src/geometry`), puis extrudée en maillages étanches maison (`src/mesh`) et sérialisée (`src/export`). L'UI Svelte 5 (`src/ui`) ne fait qu'orchestrer : état → géométrie → aperçus 2D/3D → export.
+**Architecture:** Toute la géométrie est 2D (polygones entiers en µm via Clipper), calculée par des modules TS purs (`src/geometry`), puis extrudée en maillages étanches maison (`src/mesh`) et sérialisée (`src/export`). L'UI Svelte 5 (`src/ui`) ne fait qu'orchestrer : état → géométrie → aperçus 2D/3D → export.
 
-**Tech Stack:** Vite 8, Svelte 5 (runes), TypeScript 5.9, Vitest 5, clipper2-js, opentype.js 2, earcut 3, fflate, three, remixicon, @fontsource/*.
+**Tech Stack:** Vite 8, Svelte 5 (runes), TypeScript 5.9, Vitest 5, clipper-lib (Clipper 1), opentype.js 2, earcut 3, fflate, three, remixicon, @fontsource/*.
 
 **Spec:** `docs/superpowers/specs/2026-10-09-porte-cles-gen-design.md`
 
@@ -211,26 +211,44 @@ git commit -m "chore: scaffold vite svelte ts project"
 
 ---
 
-### Task 2: Wrapper Clipper2 (`geometry/types.ts`, `geometry/clip.ts`)
+### Task 2: Wrapper Clipper (`geometry/types.ts`, `geometry/clip.ts`)
+
+> Ruling (exécution) : `clipper2-js` 1.2.4 produit des offsets faux et un `pointInPolygon` erroné. On utilise `clipper-lib` (Clipper 1 v6.4.2, licence Boost, `@types/clipper-lib`), entièrement encapsulé dans `clip.ts`. Le reste du code ne voit que nos types `Pt`/`Path`/`Shape`.
 
 **Files:**
+- Modify: `package.json` (retirer `clipper2-js`, ajouter `clipper-lib` + `@types/clipper-lib` en dev)
 - Create: `src/geometry/types.ts`, `src/geometry/clip.ts`
 - Test: `src/geometry/clip.test.ts`
 
 **Interfaces:**
 - Produces:
-  - `type Shape = Paths64` (entiers µm, Y bas), `const SCALE = 1000`
+  - `interface Pt { x: number; y: number }`, `type Path = Pt[]`, `type Shape = Path[]` (entiers µm, Y bas), `const SCALE = 1000`
   - `interface Bounds { minX: number; minY: number; maxX: number; maxY: number }` (mm)
   - `type PathCommand = { type: 'M' | 'L'; x: number; y: number } | { type: 'Q'; x1: number; y1: number; x: number; y: number } | { type: 'C'; x1: number; y1: number; x2: number; y2: number; x: number; y: number } | { type: 'Z' }` (mm)
-  - `emptyShape(): Shape`, `toShape(paths: Path64[]): Shape`, `union(a: Shape, b?: Shape): Shape`, `difference(a: Shape, b: Shape): Shape`, `intersect(a: Shape, b: Shape): Shape`, `offset(s: Shape, mm: number): Shape`, `outerOnly(s: Shape): Shape`, `circle(cx: number, cy: number, r: number): Shape`, `translate(s: Shape, dx: number, dy: number): Shape`, `area(s: Shape): number` (mm²), `bounds(s: Shape): Bounds | null`, `groupPolygons(s: Shape): { outer: Path64; holes: Path64[] }[]`, `cleanPath(p: Path64): Path64`
+  - `makePath(coordsMm: number[]): Path` (paires x,y en mm → µm arrondis), `emptyShape(): Shape`, `toShape(paths: Path[]): Shape`, `isOuter(p: Path): boolean` (orientation positive = contour extérieur), `union(a: Shape, b?: Shape): Shape`, `difference(a: Shape, b: Shape): Shape`, `intersect(a: Shape, b: Shape): Shape`, `offset(s: Shape, mm: number): Shape`, `outerOnly(s: Shape): Shape`, `circle(cx: number, cy: number, r: number, steps?: number): Shape`, `translate(s: Shape, dx: number, dy: number): Shape`, `area(s: Shape): number` (mm², signée : extérieurs +, trous −), `bounds(s: Shape): Bounds | null`, `groupPolygons(s: Shape): { outer: Path; holes: Path[] }[]`, `cleanPath(p: Path): Path`
 
-- [ ] **Step 1: Écrire `src/geometry/types.ts`**
+- [ ] **Step 1: Dépendances**
+
+Run:
+```bash
+npm uninstall clipper2-js
+npm i clipper-lib@^6.4.2
+npm i -D @types/clipper-lib
+```
+
+- [ ] **Step 2: Écrire `src/geometry/types.ts`**
 
 ```ts
-import type { Paths64 } from 'clipper2-js';
+export interface Pt {
+  x: number;
+  y: number;
+}
 
-/** Ensemble de contours fermés, coordonnées entières en µm, axe Y vers le bas. */
-export type Shape = Paths64;
+/** Contour fermé, coordonnées entières en µm, axe Y vers le bas. */
+export type Path = Pt[];
+
+/** Ensemble de contours fermés (extérieurs orientés positivement, trous négativement). */
+export type Shape = Path[];
 
 /** Unités internes par mm. */
 export const SCALE = 1000;
@@ -251,21 +269,23 @@ export type PathCommand =
   | { type: 'Z' };
 ```
 
-- [ ] **Step 2: Écrire le test qui échoue `src/geometry/clip.test.ts`**
+- [ ] **Step 3: Écrire le test qui échoue `src/geometry/clip.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
-import { Clipper } from 'clipper2-js';
 import {
-  area, bounds, circle, difference, emptyShape, groupPolygons, intersect,
-  offset, outerOnly, toShape, translate, union,
+  area, bounds, circle, cleanPath, difference, emptyShape, groupPolygons, intersect, isOuter,
+  makePath, offset, outerOnly, toShape, translate, union,
 } from './clip';
-import { SCALE } from './types';
 
 const rect = (x: number, y: number, w: number, h: number) =>
-  toShape([Clipper.makePath([x, y, x + w, y, x + w, y + h, x, y + h].map((v) => v * SCALE))]);
+  toShape([makePath([x, y, x + w, y, x + w, y + h, x, y + h])]);
 
 describe('clip', () => {
+  it('makePath converts mm to integer µm', () => {
+    expect(makePath([1.5, 2, 0.0004, 3])).toEqual([{ x: 1500, y: 2000 }, { x: 0, y: 3000 }]);
+  });
+
   it('union merges overlapping squares', () => {
     const u = union(toShape([...rect(0, 0, 10, 10), ...rect(5, 5, 10, 10)]));
     expect(u.length).toBe(1);
@@ -286,8 +306,20 @@ describe('clip', () => {
   it('offset grows with round joins', () => {
     const o = offset(rect(0, 0, 10, 10), 1);
     // 10x10 + 4 bandes 10x1 + disque r=1
-    expect(area(o)).toBeCloseTo(100 + 40 + Math.PI, 0);
+    expect(area(o)).toBeCloseTo(100 + 40 + Math.PI, 1);
+    expect(bounds(o)).toEqual({ minX: -1, minY: -1, maxX: 11, maxY: 11 });
     expect(offset(rect(0, 0, 10, 10), 0)).toHaveLength(1);
+  });
+
+  it('negative offset erodes', () => {
+    expect(area(offset(rect(0, 0, 10, 10), -1))).toBeCloseTo(64, 1);
+  });
+
+  it('offset of an L shape stays a single outline', () => {
+    const L = union(toShape([...rect(0, 0, 2, 10), ...rect(0, 8, 10, 2)]));
+    const o = offset(L, 1);
+    expect(o).toHaveLength(1);
+    expect(isOuter(o[0])).toBe(true);
   });
 
   it('outerOnly fills holes', () => {
@@ -298,7 +330,7 @@ describe('clip', () => {
   it('circle has expected area and positive orientation', () => {
     const c = circle(0, 0, 5);
     expect(area(c)).toBeCloseTo(Math.PI * 25, 0);
-    expect(Clipper.isPositive(c[0])).toBe(true);
+    expect(isOuter(c[0])).toBe(true);
   });
 
   it('bounds and translate', () => {
@@ -307,119 +339,178 @@ describe('clip', () => {
     expect(bounds(emptyShape())).toBeNull();
   });
 
-  it('groupPolygons separates islands', () => {
-    const g = groupPolygons(union(toShape([...rect(0, 0, 1, 1), ...rect(5, 5, 1, 1)])));
+  it('groupPolygons separates islands and assigns holes to the right outer', () => {
+    const two = union(toShape([...rect(0, 0, 10, 10), ...rect(20, 0, 10, 10)]));
+    const withHole = difference(two, rect(22, 2, 2, 2));
+    const g = groupPolygons(withHole);
     expect(g).toHaveLength(2);
-    expect(g.every((p) => p.holes.length === 0)).toBe(true);
+    const owner = g.find((p) => p.holes.length === 1)!;
+    expect(bounds([owner.outer])!.minX).toBe(20);
+  });
+
+  it('groupPolygons handles island inside a hole', () => {
+    const s = union(toShape([...difference(rect(0, 0, 20, 20), rect(2, 2, 16, 16)), ...rect(8, 8, 4, 4)]));
+    const g = groupPolygons(s);
+    expect(g).toHaveLength(2);
+    expect(g.find((p) => bounds([p.outer])!.minX === 8)!.holes).toHaveLength(0);
+    expect(g.find((p) => bounds([p.outer])!.minX === 0)!.holes).toHaveLength(1);
+  });
+
+  it('cleanPath removes duplicates and collinear points', () => {
+    const p = makePath([0, 0, 5, 0, 10, 0, 10, 0, 10, 10, 0, 10]);
+    expect(cleanPath(p)).toHaveLength(4);
   });
 });
 ```
 
-- [ ] **Step 3: Lancer, vérifier l'échec**
+- [ ] **Step 4: Lancer, vérifier l'échec**
 
 Run: `npx vitest run src/geometry/clip.test.ts` → Expected: FAIL (`Cannot find module './clip'`).
 
-- [ ] **Step 4: Implémenter `src/geometry/clip.ts`**
+- [ ] **Step 5: Implémenter `src/geometry/clip.ts`**
 
 ```ts
-import {
-  Clipper, EndType, FillRule, JoinType, Path64, Paths64, PointInPolygonResult,
-} from 'clipper2-js';
-import { SCALE, type Bounds, type Shape } from './types';
+import * as ClipperNS from 'clipper-lib';
+import { SCALE, type Bounds, type Path, type Pt, type Shape } from './types';
+
+// clipper-lib est un module CommonJS : selon l'interop, l'API est sur le namespace ou sur `default`.
+const CL = ((ClipperNS as unknown as { default?: typeof ClipperNS }).default ?? ClipperNS) as typeof ClipperNS;
+const { Clipper, ClipperOffset, ClipType, PolyType, PolyFillType, JoinType, EndType } = CL;
+
+/** Tolérance d'arc des offsets arrondis : 5 µm. */
+const ARC_TOLERANCE = 5;
+
+type CPath = ClipperNS.Path;
+const toC = (p: Path): CPath => p.map((pt) => ({ X: pt.x, Y: pt.y }));
+const fromC = (p: CPath): Path => p.map((pt) => ({ x: pt.X, y: pt.Y }));
+
+export function makePath(coordsMm: number[]): Path {
+  const p: Path = [];
+  for (let i = 0; i + 1 < coordsMm.length; i += 2) {
+    p.push({ x: Math.round(coordsMm[i] * SCALE), y: Math.round(coordsMm[i + 1] * SCALE) });
+  }
+  return p;
+}
 
 export function emptyShape(): Shape {
-  return new Paths64();
+  return [];
 }
 
-export function toShape(paths: Path64[]): Shape {
-  const s = new Paths64();
-  for (const p of paths) s.push(p);
-  return s;
+export function toShape(paths: Path[]): Shape {
+  return [...paths];
 }
 
-export function union(a: Shape, b?: Shape): Shape {
-  return Clipper.Union(a, b, FillRule.NonZero);
+export function isOuter(p: Path): boolean {
+  return Clipper.Orientation(toC(p));
+}
+
+function boolean(type: number, a: Shape, b: Shape): Shape {
+  const c = new Clipper();
+  c.AddPaths(a.map(toC), PolyType.ptSubject, true);
+  if (b.length) c.AddPaths(b.map(toC), PolyType.ptClip, true);
+  const out: CPath[] = [];
+  c.Execute(type, out, PolyFillType.pftNonZero, PolyFillType.pftNonZero);
+  return out.map(fromC);
+}
+
+export function union(a: Shape, b: Shape = []): Shape {
+  return boolean(ClipType.ctUnion, a, b);
 }
 
 export function difference(a: Shape, b: Shape): Shape {
-  return Clipper.Difference(a, b, FillRule.NonZero);
+  return boolean(ClipType.ctDifference, a, b);
 }
 
 export function intersect(a: Shape, b: Shape): Shape {
-  return Clipper.Intersect(a, b, FillRule.NonZero);
+  return boolean(ClipType.ctIntersection, a, b);
 }
 
-/** Offset arrondi en mm (négatif = érosion). */
+/** Offset arrondi en mm (négatif = érosion). Résultat normalisé (union). */
 export function offset(s: Shape, mm: number): Shape {
-  if (mm === 0 || s.length === 0) return union(s);
-  return Clipper.InflatePaths(s, mm * SCALE, JoinType.Round, EndType.Polygon);
+  const u = union(s);
+  if (mm === 0 || u.length === 0) return u;
+  const o = new ClipperOffset(2, ARC_TOLERANCE);
+  o.AddPaths(u.map(toC), JoinType.jtRound, EndType.etClosedPolygon);
+  const out: CPath[] = [];
+  o.Execute(out, mm * SCALE);
+  return union(out.map(fromC));
 }
 
 /** Garde uniquement les contours extérieurs (remplit les trous). */
 export function outerOnly(s: Shape): Shape {
-  return union(toShape(union(s).filter((p) => Clipper.isPositive(p))));
+  return union(union(s).filter(isOuter));
 }
 
 export function circle(cx: number, cy: number, r: number, steps = 96): Shape {
-  let p = Clipper.ellipse({ x: cx * SCALE, y: cy * SCALE }, r * SCALE, r * SCALE, steps);
-  p = toPath(p.map((pt) => ({ x: Math.round(pt.x), y: Math.round(pt.y) })));
-  if (!Clipper.isPositive(p)) p = Clipper.reversePath(p);
-  return toShape([p]);
+  const p: Path = [];
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    p.push({ x: Math.round((cx + r * Math.cos(a)) * SCALE), y: Math.round((cy + r * Math.sin(a)) * SCALE) });
+  }
+  return [isOuter(p) ? p : p.reverse()];
 }
 
 export function translate(s: Shape, dx: number, dy: number): Shape {
-  return Clipper.translatePaths(s, Math.round(dx * SCALE), Math.round(dy * SCALE));
+  const ix = Math.round(dx * SCALE);
+  const iy = Math.round(dy * SCALE);
+  return s.map((p) => p.map((pt) => ({ x: pt.x + ix, y: pt.y + iy })));
 }
 
-/** Aire nette en mm². */
+/** Aire nette en mm² (extérieurs positifs, trous négatifs). */
 export function area(s: Shape): number {
-  return Clipper.areaPaths(s) / (SCALE * SCALE);
+  let a = 0;
+  for (const p of s) a += Clipper.Area(toC(p));
+  return a / (SCALE * SCALE);
 }
 
 export function bounds(s: Shape): Bounds | null {
-  if (s.length === 0 || s.every((p) => p.length === 0)) return null;
-  const r = Clipper.getBoundsPaths(s);
-  return { minX: r.left / SCALE, minY: r.top / SCALE, maxX: r.right / SCALE, maxY: r.bottom / SCALE };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of s) for (const pt of p) {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y > maxY) maxY = pt.y;
+  }
+  if (minX === Infinity) return null;
+  return { minX: minX / SCALE, minY: minY / SCALE, maxX: maxX / SCALE, maxY: maxY / SCALE };
 }
 
 /** Supprime doublons consécutifs et points colinéaires (indispensable avant earcut). */
-export function cleanPath(p: Path64): Path64 {
-  return Clipper.trimCollinear(Clipper.stripDuplicates(p, true));
+export function cleanPath(p: Path): Path {
+  return fromC(Clipper.CleanPolygon(toC(p), 1.415));
 }
 
-/** Regroupe chaque contour extérieur avec ses trous (pour la triangulation). */
-export function groupPolygons(s: Shape): { outer: Path64; holes: Path64[] }[] {
-  const outers = s.filter((p) => Clipper.isPositive(p));
-  const holes = s.filter((p) => !Clipper.isPositive(p));
-  const groups = outers
-    .map((outer) => ({ outer, holes: [] as Path64[], a: Math.abs(Clipper.area(outer)) }))
+/** Regroupe chaque contour extérieur avec ses trous directs (pour la triangulation). */
+export function groupPolygons(s: Shape): { outer: Path; holes: Path[] }[] {
+  const absArea = (p: Path) => Math.abs(Clipper.Area(toC(p)));
+  const groups = s.filter(isOuter)
+    .map((outer) => ({ outer, holes: [] as Path[], a: absArea(outer) }))
     .sort((x, y) => x.a - y.a);
-  for (const h of holes) {
-    const owner = groups.find((g) =>
-      h.some((pt) => Clipper.pointInPolygon(pt, g.outer) === PointInPolygonResult.IsInside),
-    );
+  for (const h of s.filter((p) => !isOuter(p))) {
+    const ha = absArea(h);
+    // le plus petit extérieur plus grand que le trou qui contient un sommet du trou
+    const owner = groups.find((g) => g.a > ha && h.some((pt) => inside(pt, g.outer)));
     owner?.holes.push(h);
   }
   return groups.map(({ outer, holes }) => ({ outer, holes }));
 }
 
-function toPath(pts: { x: number; y: number }[]): Path64 {
-  const p = new Path64();
-  for (const pt of pts) p.push(pt);
-  return p;
+/** Point strictement intérieur ou sur le bord (sommet de trou sur le contour = possédé). */
+function inside(pt: Pt, poly: Path): boolean {
+  return Clipper.PointInPolygon({ X: pt.x, Y: pt.y }, toC(poly)) !== 0;
 }
 ```
 
-- [ ] **Step 5: Lancer, vérifier le succès**
+- [ ] **Step 6: Lancer, vérifier le succès**
 
-Run: `npx vitest run src/geometry/clip.test.ts` → Expected: 8 PASS.
-Si `Clipper.ellipse` renvoie déjà des entiers, garder le `Math.round` (inoffensif). Si `toPath`/`new Path64()` pose un souci de typage, `Clipper.makePath(flatArray)` est l'alternative.
+Run: `npx vitest run src/geometry/clip.test.ts` → Expected: 13 PASS.
+Run: `npm run check` → Expected: 0 erreur (si `import * as ClipperNS` pose un souci de typage, garder le namespace pour les types et l'accès `default ?? namespace` pour le runtime comme ci-dessus).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/geometry
-git commit -m "feat(geometry): add clipper2 wrapper"
+git add package.json package-lock.json src/geometry
+git commit -m "feat(geometry): add clipper wrapper"
 ```
 
 ---
@@ -498,7 +589,6 @@ Run: `npx vitest run src/geometry/flatten.test.ts` → Expected: FAIL (module ab
 - [ ] **Step 3: Implémenter `src/geometry/flatten.ts`**
 
 ```ts
-import { Path64 } from 'clipper2-js';
 import { toShape } from './clip';
 import { SCALE, type PathCommand, type Shape } from './types';
 
@@ -567,11 +657,7 @@ export function flattenCommands(cmds: PathCommand[], segLen = 0.2): Shape {
   flush();
 
   return toShape(
-    contours.map((pts) => {
-      const p = new Path64();
-      for (const pt of pts) p.push({ x: Math.round(pt.x * SCALE), y: Math.round(pt.y * SCALE) });
-      return p;
-    }),
+    contours.map((pts) => pts.map((pt) => ({ x: Math.round(pt.x * SCALE), y: Math.round(pt.y * SCALE) }))),
   );
 }
 
@@ -926,17 +1012,16 @@ Note : la spec dit `iconSize` = « hauteur capitale » par défaut ; on fixe 20 
 
 ```ts
 import { describe, it, expect } from 'vitest';
-import { Clipper } from 'clipper2-js';
-import { buildKeychain } from './keychain';
-import { area, bounds, difference, toShape } from './clip';
+import { buildKeychain, type KeychainGeometry } from './keychain';
+import { area, bounds, difference, isOuter, toShape } from './clip';
 import { DEFAULT_PARAMS, type KeychainParams } from '../params';
 import { loadTestFont } from '../test/fonts';
 
 const font = loadTestFont();
 const P = (o: Partial<KeychainParams> = {}): KeychainParams => ({ ...DEFAULT_PARAMS, ...o });
 const SMILEY = 'M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z';
-const outers = (g: { base: any[] }) => g.base.filter((p) => Clipper.isPositive(p));
-const holes = (g: { base: any[] }) => g.base.filter((p) => !Clipper.isPositive(p));
+const outers = (g: KeychainGeometry) => g.base.filter(isOuter);
+const holes = (g: KeychainGeometry) => g.base.filter((p) => !isOuter(p));
 
 describe('buildKeychain', () => {
   it('base contains letters and is normalized at origin', () => {
@@ -1148,14 +1233,12 @@ export function volume(m: Mesh): number {
 
 ```ts
 import { describe, it, expect } from 'vitest';
-import { Clipper } from 'clipper2-js';
 import { extrude, mergeMeshes } from './extrude';
 import { isWatertight, volume } from './check';
-import { difference, toShape, circle } from '../geometry/clip';
-import { SCALE } from '../geometry/types';
+import { circle, difference, makePath, toShape } from '../geometry/clip';
 
 const rect = (x: number, y: number, w: number, h: number) =>
-  toShape([Clipper.makePath([x, y, x + w, y, x + w, y + h, x, y + h].map((v) => v * SCALE))]);
+  toShape([makePath([x, y, x + w, y, x + w, y + h, x, y + h])]);
 
 describe('extrude', () => {
   it('box is watertight with correct volume', () => {
@@ -1171,7 +1254,7 @@ describe('extrude', () => {
   });
 
   it('collinear points do not break manifoldness', () => {
-    const p = Clipper.makePath([0, 0, 5, 0, 10, 0, 10, 10, 0, 10].map((v) => v * SCALE));
+    const p = makePath([0, 0, 5, 0, 10, 0, 10, 10, 0, 10]);
     expect(isWatertight(extrude(toShape([p]), 0, 1))).toBe(true);
   });
 
@@ -1400,16 +1483,14 @@ git commit -m "feat(mesh): extrude shapes into watertight meshes"
 `src/export/svg.test.ts`:
 ```ts
 import { describe, it, expect } from 'vitest';
-import { Clipper } from 'clipper2-js';
 import { shapeToSvg } from './svg';
-import { toShape } from '../geometry/clip';
-import { SCALE } from '../geometry/types';
+import { makePath, toShape } from '../geometry/clip';
 
 describe('shapeToSvg', () => {
   it('writes mm dimensions and one path per contour', () => {
     const s = toShape([
-      Clipper.makePath([0, 0, 10, 0, 10, 5, 0, 5].map((v) => v * SCALE)),
-      Clipper.makePath([20, 0, 21.5, 0, 21.5, 1].map((v) => v * SCALE)),
+      makePath([0, 0, 10, 0, 10, 5, 0, 5]),
+      makePath([20, 0, 21.5, 0, 21.5, 1]),
     ]);
     const svg = shapeToSvg(s, 21.5, 5);
     expect(svg).toContain('width="21.5mm"');
