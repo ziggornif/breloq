@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildKeychain } from '../geometry/keychain';
-import { buildMeshes } from './keychain3d';
+import { buildMeshes, buildLaserMeshes, LASER_SHEET_THICKNESS } from './keychain3d';
 import { isClosedByPosition, isWatertight, volume } from './check';
 import { parseIconResponse } from '../icons/iconify';
 import { FIXTURES } from '../test/iconify-fixtures';
@@ -49,4 +49,25 @@ describe('buildMeshes', () => {
       expect(isClosedByPosition(m.letters)).toBe(true);
       expect(isClosedByPosition(m.base)).toBe(true);
     });
+});
+
+describe('buildLaserMeshes', () => {
+  it('stacks two plywood sheets without pocket', () => {
+    const m = buildLaserMeshes(g);
+    expect(LASER_SHEET_THICKNESS).toBe(3);
+    for (const part of [m.base, m.letters]) {
+      expect(isWatertight(part)).toBe(true);
+      expect(isClosedByPosition(part)).toBe(true);
+    }
+    expect(zRange(m.base.positions)).toEqual([0, 3]);
+    expect(zRange(m.letters.positions)).toEqual([3, 6]);
+    const solid = buildMeshes(g, { ...DEFAULT_PARAMS, pocketDepth: 0 });
+    expect(volume(m.base)).toBeCloseTo(volume(solid.base), 6);
+  });
+
+  it('honours a custom thickness', () => {
+    const m = buildLaserMeshes(g, 2);
+    expect(zRange(m.base.positions)).toEqual([0, 2]);
+    expect(zRange(m.letters.positions)).toEqual([2, 4]);
+  });
 });

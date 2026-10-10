@@ -3,7 +3,7 @@
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
   import type { KeychainGeometry } from '../geometry/keychain';
   import type { KeychainParams } from '../params';
-  import { buildMeshes } from '../mesh/keychain3d';
+  import { buildMeshes, buildLaserMeshes } from '../mesh/keychain3d';
   import type { Mesh } from '../mesh/extrude';
 
   let { geometry, params }: { geometry: KeychainGeometry; params: KeychainParams } = $props();
@@ -17,21 +17,98 @@
   let framedFor = '';
   let meshError = $state<string | null>(null);
 
-  function toThree(m: Mesh, color: string): THREE.Mesh {
+  const TEXTURE_MM = 50; // 1 répétition de texture = 50 mm de bois
+
+  let woodTexture: THREE.CanvasTexture | null = null;
+  function getWoodTexture(): THREE.CanvasTexture {
+    if (woodTexture) return woodTexture;
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#d9b27c';
+    ctx.fillRect(0, 0, size, size);
+    // veines horizontales, périodiques en x et y pour un raccord sans couture
+    let seed = 1234567;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (let i = 0; i < 90; i++) {
+      const y0 = rnd() * size;
+      const amp = 2 + rnd() * 8;
+      const freq = 1 + Math.floor(rnd() * 3);
+      const ph = rnd() * Math.PI * 2;
+      const light = rnd() < 0.5;
+      ctx.strokeStyle = light ? `rgba(255,235,200,${0.08 + rnd() * 0.15})` : `rgba(120,76,32,${0.06 + rnd() * 0.2})`;
+      ctx.lineWidth = 0.6 + rnd() * 2;
+      for (const dy of [-size, 0, size]) {
+        ctx.beginPath();
+        for (let x = 0; x <= size; x += 8) {
+          const y = y0 + dy + amp * Math.sin((x / size) * Math.PI * 2 * freq + ph);
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+    const img = ctx.getImageData(0, 0, size, size);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const n = (rnd() - 0.5) * 18;
+      img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n;
+    }
+    ctx.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 4;
+    woodTexture = t;
+    return t;
+  }
+
+  function disposeWood() {
+    woodTexture?.dispose();
+    woodTexture = null;
+  }
+
+  /** wood = null : couleur unie (3D print). Sinon bois : UV planaires en mm sur les faces haut/bas, tranches brûlées. */
+  function toThree(m: Mesh, color: string, wood: { map: THREE.Texture; tint: string } | null): THREE.Mesh {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(m.positions, 3));
     g.setIndex(m.indices);
     const flat = g.toNonIndexed();
     flat.computeVertexNormals();
     g.dispose();
-    return new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
+    if (!wood) return new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
+
+    const pos = flat.getAttribute('position');
+    const nor = flat.getAttribute('normal');
+    const uv = new Float32Array(pos.count * 2);
+    for (let i = 0; i < pos.count; i++) {
+      uv[i * 2] = pos.getX(i) / TEXTURE_MM;
+      uv[i * 2 + 1] = pos.getY(i) / TEXTURE_MM;
+    }
+    flat.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    // groupes par triangle : 0 = faces haut/bas, 1 = tranches
+    flat.clearGroups();
+    let start = 0;
+    let cur = -1;
+    for (let t = 0; t < pos.count / 3; t++) {
+      const mat = Math.abs(nor.getZ(t * 3)) > 0.5 ? 0 : 1;
+      if (mat !== cur) {
+        if (cur !== -1) flat.addGroup(start * 3, (t - start) * 3, cur);
+        start = t;
+        cur = mat;
+      }
+    }
+    if (cur !== -1) flat.addGroup(start * 3, pos.count - start * 3, cur);
+    const caps = new THREE.MeshStandardMaterial({ map: wood.map, color: wood.tint, roughness: 0.85 });
+    const sides = new THREE.MeshStandardMaterial({ color: '#4a2c14', roughness: 0.95 });
+    return new THREE.Mesh(flat, [caps, sides]);
   }
 
   function clearGroup() {
     for (const c of [...group.children]) {
       const m = c as THREE.Mesh;
       m.geometry.dispose();
-      (m.material as THREE.Material).dispose();
+      // la texture est partagée : elle n'est libérée qu'à la destruction du composant
+      for (const mat of Array.isArray(m.material) ? m.material : [m.material]) mat.dispose();
       group.remove(m);
     }
   }
@@ -63,6 +140,7 @@
       renderer.setAnimationLoop(null);
       clearGroup();
       controls.dispose();
+      disposeWood();
       renderer.forceContextLoss();
       renderer.dispose();
       renderer.domElement.remove();
@@ -72,9 +150,16 @@
 
   $effect(() => {
     try {
-      const m = buildMeshes(geometry, params);
-      clearGroup();
-      group.add(toThree(m.base, params.baseColor), toThree(m.letters, params.lettersColor));
+      if (params.mode === 'laser') {
+        const m = buildLaserMeshes(geometry);
+        clearGroup();
+        const map = getWoodTexture();
+        group.add(toThree(m.base, '', { map, tint: '#ffffff' }), toThree(m.letters, '', { map, tint: '#ffe2b8' }));
+      } else {
+        const m = buildMeshes(geometry, params);
+        clearGroup();
+        group.add(toThree(m.base, params.baseColor, null), toThree(m.letters, params.lettersColor, null));
+      }
       meshError = null;
     } catch (e) {
       clearGroup();

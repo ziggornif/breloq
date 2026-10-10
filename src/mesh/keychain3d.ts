@@ -19,3 +19,11 @@ export function buildMeshes(g: KeychainGeometry, p: PrintParams): { base: Mesh; 
   const letters = extrude(g.letters, H - d, H + p.reliefHeight);
   return { base, letters };
 }
+
+/** Épaisseur d'une planche de contreplaqué découpée au laser (mm). */
+export const LASER_SHEET_THICKNESS = 3;
+
+/** Aperçu laser : base pleine (sans poche) 0→t, lettres collées dessus t→2t. */
+export function buildLaserMeshes(g: KeychainGeometry, thickness = LASER_SHEET_THICKNESS): { base: Mesh; letters: Mesh } {
+  return { base: extrude(g.base, 0, thickness), letters: extrude(g.letters, thickness, 2 * thickness) };
+}

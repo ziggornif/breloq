@@ -85,7 +85,7 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 - Store `params` unique source de vérité ; géométrie recalculée avec debounce ~100 ms (Web Worker seulement si nécessaire).
 - **Zone principale** : toggle Aperçu 2D / Aperçu 3D.
   - 2D : SVG avec grille mm, règles, cotes largeur × hauteur ; base (rouge) et lettres (bleu) superposées, puis couche lettres seule en dessous.
-  - 3D : Three.js + OrbitControls, couleurs `baseColor` / `lettersColor`.
+  - 3D : Three.js + OrbitControls. Mode Impression 3D : couleurs `baseColor` / `lettersColor`, poche et relief. Mode laser : deux planches de contreplaqué de 3 mm (`buildLaserMeshes`, base 0→3 sans poche, lettres 3→6 collées dessus), texture bois procédurale (canvas, UV planaires en mm) et tranches brunes « brûlées ».
 - **Panneau droit** : sections Texte, Police (liste avec aperçu + import TTF/OTF), Icône (toggle + picker : recherche Iconify temporisée, puces de catégories = recherches prédéfinies, miniatures `<img>` servies par l'API, jamais de SVG injecté), Trou, Mode (laser / 3D, réglages 3D visibles en mode 3D), bouton Exporter.
 - **Persistance** : localStorage + état encodé dans l'URL (hash) pour partager. Une police importée n'est pas partageable par lien (fallback sur la police par défaut).
 - Polices embarquées (14) : scripts attachés (Pacifico, Lobster, Dancing Script, Satisfy, Kaushan Script, Yellowtail, Cookie) et grasses lisibles (Fredoka, Baloo 2, Righteous, Bungee, Titan One, Luckiest Guy, Chewy). Chargées à la demande.
