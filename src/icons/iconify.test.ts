@@ -30,6 +30,21 @@ describe('normalizeIconId', () => {
   });
 });
 
+describe('parseIconResponse aliases', () => {
+  const data = {
+    prefix: 'mdi', width: 24, height: 24,
+    icons: { emoticon: { body: '<path d="M0 0h1v1z"/>' } },
+    aliases: { face: { parent: 'emoticon' }, smile: { parent: 'face', width: 32 }, flipped: { parent: 'emoticon', hFlip: true } },
+  };
+  it('resolves aliases (including chains) to their parent body, alias props overriding', () => {
+    expect(mod.parseIconResponse(data, 'face')).toEqual({ body: '<path d="M0 0h1v1z"/>', left: 0, top: 0, width: 24, height: 24 });
+    expect(mod.parseIconResponse(data, 'smile').width).toBe(32);
+  });
+  it('rejects aliases that flip or rotate (not supported)', () => {
+    expect(() => mod.parseIconResponse(data, 'flipped')).toThrow('Icône non prise en charge');
+  });
+});
+
 describe('iconDataUri', () => {
   it('builds a local SVG data URI from the icon body (no request per thumbnail)', () => {
     const uri = mod.iconDataUri({ body: '<path fill="currentColor" d="M0 0h4v4H0z"/>', left: 0, top: 0, width: 24, height: 24 });
