@@ -12,7 +12,7 @@ Page web où l'utilisateur saisit un texte, choisit police et paramètres, ajout
 
 ## Contraintes
 
-- 100 % client, site statique (GitHub Pages / Netlify). Aucun backend.
+- 100 % client, site statique (GitHub Pages / Netlify). Aucun backend. Le réseau n'est requis que pour les icônes (API publique Iconify).
 - Unités : mm uniquement.
 - Aucun booléen 3D : toute la géométrie est calculée en 2D (polygones), puis extrudée.
 
@@ -24,7 +24,7 @@ Page web où l'utilisateur saisit un texte, choisit police et paramètres, ajout
 - `earcut` : triangulation des faces
 - `three` : aperçu 3D uniquement (OrbitControls)
 - `fflate` : zip du 3MF
-- `remixicon` : source des icônes (Apache 2.0), indexée au build
+- API Iconify (`api.iconify.design`) : recherche et corps SVG des icônes, 8 jeux pleins (mdi, fa6-solid, game-icons, mingcute, ri, bi, ant-design, material-symbols) ; pas de dépendance npm
 - Polices Google Fonts (OFL) embarquées dans `public/fonts/`
 - Vitest pour les tests
 
@@ -38,7 +38,7 @@ Page web où l'utilisateur saisit un texte, choisit police et paramètres, ajout
 | | `textWeight` (mm, offset de graissage, ≥ 0) | 0 |
 | | `letterSpacing` (mm) | 0.3 |
 | | `outlineWidth` (mm, contour de base) | 3 |
-| Icône | `iconEnabled`, `iconName` | `false`, — |
+| Icône | `iconEnabled`, `iconName` (`prefix:name` ; un nom sans préfixe est lu `ri:<name>`) | `false`, `ri:emotion-laugh-fill` |
 | | `iconSize` (mm), `iconGap` (mm) | = hauteur capitale, 2 |
 | Trou | `holeEnabled` | `true` |
 | | `holePosition` : `left` \| `right` \| `top` | `left` |
@@ -55,7 +55,7 @@ Page web où l'utilisateur saisit un texte, choisit police et paramètres, ajout
 
 1. **Texte → polygones** (`text.ts`) : opentype.js produit les chemins de chaque glyphe, avancés de `advance + letterSpacing`. Béziers aplatis (`flatten.ts`, tolérance ~0,05 mm). Axe Y retourné (repère SVG, Y vers le bas).
 2. **Lettres `L`** : union Clipper2 de tous les glyphes (fill-rule nonzero). Si `textWeight > 0`, offset arrondi de `textWeight / 2`.
-3. **Icône `I`** (`icon.ts`) : chemin SVG Remix (24×24) parsé, aplati, mis à l'échelle à `iconSize`, centré verticalement sur la hauteur des lettres, placé à gauche du texte avec `iconGap`. Traité ensuite comme un glyphe.
+3. **Icône `I`** (`svgicon.ts`) : corps SVG Iconify lu sans DOM (path, circle, ellipse, rect, polygon, polyline ; arcs et S/T gérés par `svgpath.ts`), éléments invisibles ou semi-transparents ignorés, `fill-rule="evenodd"` respecté, `transform`/`use` refusés (« Icône non prise en charge »). Union des formes, viewBox ramenée à `iconSize` sur sa plus grande dimension, centrée verticalement sur les lettres, placée à gauche du texte avec `iconGap`. Traité ensuite comme un glyphe.
 4. **Base `B`** (`keychain.ts`) : `offset(L ∪ I, outlineWidth, round)`, puis on ne garde que les contours extérieurs (trous intérieurs remplis).
 5. **Trou** : centre placé sur le bord choisi de la boîte englobante de `B`, à `holeDiameter/2 + holeMargin` vers l'extérieur moins un chevauchement pour fusionner, décalé de `holeOffset`. `B = (B ∪ disque(r + marge)) − disque(r)`.
 6. **Sortie** : `{ base: Polygons, letters: Polygons, bounds }`, où `letters = L ∪ I`. Coordonnées normalisées pour que la boîte englobante de `B` commence en (0, 0).
@@ -86,10 +86,10 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 - **Zone principale** : toggle Aperçu 2D / Aperçu 3D.
   - 2D : SVG avec grille mm, règles, cotes largeur × hauteur ; base (rouge) et lettres (bleu) superposées, puis couche lettres seule en dessous.
   - 3D : Three.js + OrbitControls, couleurs `baseColor` / `lettersColor`.
-- **Panneau droit** : sections Texte, Police (liste avec aperçu + import TTF/OTF), Icône (toggle + picker avec recherche et catégories Remix), Trou, Mode (laser / 3D, réglages 3D visibles en mode 3D), bouton Exporter.
+- **Panneau droit** : sections Texte, Police (liste avec aperçu + import TTF/OTF), Icône (toggle + picker : recherche Iconify temporisée, puces de catégories = recherches prédéfinies, miniatures `<img>` servies par l'API, jamais de SVG injecté), Trou, Mode (laser / 3D, réglages 3D visibles en mode 3D), bouton Exporter.
 - **Persistance** : localStorage + état encodé dans l'URL (hash) pour partager. Une police importée n'est pas partageable par lien (fallback sur la police par défaut).
 - Polices embarquées (14) : scripts attachés (Pacifico, Lobster, Dancing Script, Satisfy, Kaushan Script, Yellowtail, Cookie) et grasses lisibles (Fredoka, Baloo 2, Righteous, Bungee, Titan One, Luckiest Guy, Chewy). Chargées à la demande.
-- Icônes : script de build qui lit `remixicon` et génère `icons.json` (`{ name, category, path }`), seulement les variantes `-fill` pour rester découpables.
+- Icônes : `src/icons/iconify.ts` (recherche, chargement `/<prefix>.json?icons=<name>` mis en cache en mémoire, échecs non mis en cache). Les « -line » MingCute (traits seuls) sont écartés des résultats.
 
 ## Erreurs
 
@@ -97,6 +97,8 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 - Texte vide (et pas d'icône) : export désactivé, aperçu vide.
 - Glyphe absent de la police : ignoré, avertissement affiché.
 - Échec de calcul géométrique : message dans l'aperçu, export désactivé.
+- Icônes hors ligne / erreur API : toast, icône précédente conservée ; le picker affiche l'erreur avec « Réessayer ».
+- Icône non prise en charge (transform, `use`, traits seuls) : toast, icône précédente conservée.
 
 ## Tests (Vitest)
 
