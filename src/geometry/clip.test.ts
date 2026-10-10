@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   area, bounds, circle, cleanPath, difference, emptyShape, groupPolygons, intersect, isOuter,
-  makePath, offset, outerOnly, toShape, translate, union,
+  makePath, offset, outerOnly, toShape, translate, union, unionEvenOdd,
 } from './clip';
 
 const rect = (x: number, y: number, w: number, h: number) =>
@@ -16,6 +16,12 @@ describe('clip', () => {
     const u = union(toShape([...rect(0, 0, 10, 10), ...rect(5, 5, 10, 10)]));
     expect(u.length).toBe(1);
     expect(area(u)).toBeCloseTo(175, 3);
+  });
+
+  it('unionEvenOdd turns same-winding nested contours into a hole', () => {
+    const nested = toShape([...rect(0, 0, 10, 10), ...rect(2, 2, 6, 6)]);
+    expect(area(union(nested))).toBeCloseTo(100, 3);
+    expect(area(unionEvenOdd(nested))).toBeCloseTo(64, 3);
   });
 
   it('difference punches a hole', () => {

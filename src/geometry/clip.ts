@@ -32,17 +32,22 @@ export function isOuter(p: Path): boolean {
   return Clipper.Orientation(toC(p));
 }
 
-function boolean(type: number, a: Shape, b: Shape): Shape {
+function boolean(type: number, a: Shape, b: Shape, fill: number = PolyFillType.pftNonZero): Shape {
   const c = new Clipper();
   c.AddPaths(a.map(toC), PolyType.ptSubject, true);
   if (b.length) c.AddPaths(b.map(toC), PolyType.ptClip, true);
   const out: CPath[] = [];
-  c.Execute(type, out, PolyFillType.pftNonZero, PolyFillType.pftNonZero);
+  c.Execute(type, out, fill, fill);
   return out.map(fromC);
 }
 
 export function union(a: Shape, b: Shape = []): Shape {
   return boolean(ClipType.ctUnion, a, b);
+}
+
+/** Normalise une forme en règle de remplissage pair-impair (fill-rule="evenodd" SVG). */
+export function unionEvenOdd(a: Shape): Shape {
+  return boolean(ClipType.ctUnion, a, [], PolyFillType.pftEvenOdd);
 }
 
 export function difference(a: Shape, b: Shape): Shape {
