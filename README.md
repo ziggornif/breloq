@@ -2,7 +2,7 @@
 
 Breloq est un générateur paramétrique de porte-clés à partir d'un texte, pour la **découpe laser** et l'**impression 3D**. Tout tourne dans le navigateur : aucun serveur, aucun compte.
 
-**Démo :** https://<user>.github.io/<repo>/
+**Démo :** https://ziggornif.github.io/breloq/
 
 > Inspiré du générateur paramétrique de porte-clés d'[Atomm](https://www.atomm.com/). Projet personnel, non affilié à Atomm ni à xTool.
 
