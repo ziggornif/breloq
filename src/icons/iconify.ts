@@ -69,11 +69,28 @@ export async function searchIcons(query: string, signal?: AbortSignal): Promise<
 
 const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
-/** Extrait une icône d'une réponse `/<prefix>.json?icons=<name>` (format IconifyJSON, taille par défaut 16). */
+/**
+ * Extrait une icône d'une réponse `/<prefix>.json?icons=<name>` (format IconifyJSON, taille par défaut 16).
+ * Un nom peut être un alias (`aliases[name].parent`, éventuellement en chaîne) : on suit le parent, les
+ * propriétés de l'alias l'emportent. Les alias qui retournent ou font pivoter l'icône ne sont pas gérés.
+ */
 export function parseIconResponse(data: unknown, name: string): IconSvg {
   const root = (data ?? {}) as Record<string, unknown>;
-  const icon = (root.icons as Record<string, Record<string, unknown>> | undefined)?.[name];
-  if (!icon || typeof icon.body !== 'string') throw new Error(`Icône introuvable : ${String(root.prefix ?? '?')}:${name}`);
+  const icons = (root.icons ?? {}) as Record<string, Record<string, unknown>>;
+  const aliases = (root.aliases ?? {}) as Record<string, Record<string, unknown>>;
+  const props: Record<string, unknown> = {};
+  let current = name;
+  for (let depth = 0; !icons[current]; depth++) {
+    const alias = aliases[current];
+    if (!alias || typeof alias.parent !== 'string' || depth > 8) {
+      throw new Error(`Icône introuvable : ${String(root.prefix ?? '?')}:${name}`);
+    }
+    for (const [k, v] of Object.entries(alias)) if (k !== 'parent' && !(k in props)) props[k] = v;
+    current = alias.parent;
+  }
+  const icon = { ...icons[current], ...props };
+  if (typeof icon.body !== 'string') throw new Error(`Icône introuvable : ${String(root.prefix ?? '?')}:${name}`);
+  if (icon.hFlip || icon.vFlip || icon.rotate) throw new Error(`Icône non prise en charge : ${String(root.prefix ?? '?')}:${name}`);
   return {
     body: icon.body,
     left: num(icon.left, num(root.left, 0)),
