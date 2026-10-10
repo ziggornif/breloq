@@ -6,6 +6,12 @@ Breloq est un générateur paramétrique de porte-clés à partir d'un texte, po
 
 > Inspiré du générateur paramétrique de porte-clés d'[Atomm](https://www.atomm.com/). Projet personnel, non affilié à Atomm ni à xTool.
 
+![Aperçu 2D : contour de la base et lettres, cotes en mm](docs/images/apercu-2d.png)
+
+| Découpe laser (contreplaqué) | Impression 3D (couleurs au choix) |
+|---|---|
+| ![Aperçu 3D en mode laser](docs/images/apercu-laser-3d.png) | ![Aperçu 3D en mode impression](docs/images/apercu-impression-3d.png) |
+
 ## Fonctionnalités
 
 - **Texte** : 14 polices embarquées (scripts attachés et grasses) ou import d'une police TTF/OTF/WOFF ; taille, espacement, épaisseur du texte, épaisseur du contour.
