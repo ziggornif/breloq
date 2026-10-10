@@ -49,6 +49,25 @@ ${parts.join('\n')}
 const bambuProjectSettings = (objects: ThreeMfObject[]) =>
   JSON.stringify({ ...bambuProject, filament_colour: objects.map((o) => `${o.color.toUpperCase()}FF`) }, null, 2);
 
+/** Centre du plateau de l'imprimante du gabarit Bambu (P1S : 256 × 256 mm). */
+const PLATE_CENTER = 128;
+
+/** Translation du build item qui centre l'emprise XY de tous les maillages sur le plateau. */
+function centerTransform(objects: ThreeMfObject[]): string {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const o of objects) {
+    const P = o.mesh.positions;
+    for (let i = 0; i < P.length; i += 3) {
+      if (P[i] < minX) minX = P[i];
+      if (P[i] > maxX) maxX = P[i];
+      if (P[i + 1] < minY) minY = P[i + 1];
+      if (P[i + 1] > maxY) maxY = P[i + 1];
+    }
+  }
+  if (minX === Infinity) return '1 0 0 0 1 0 0 0 1 0 0 0';
+  return `1 0 0 0 1 0 0 0 1 ${f(PLATE_CENTER - (minX + maxX) / 2)} ${f(PLATE_CENTER - (minY + maxY) / 2)} 0`;
+}
+
 export function build3mf(objects: ThreeMfObject[], name = 'porte-cles'): Uint8Array {
   const parts: string[] = [];
   parts.push('<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="fr-FR" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n<metadata name="Application">BambuStudio-02.07.01.57</metadata>\n<resources>\n<basematerials id="1">');
@@ -67,7 +86,7 @@ export function build3mf(objects: ThreeMfObject[], name = 'porte-cles'): Uint8Ar
   parts.push(`<object id="${parentId}" type="model" name="${esc(name)}"><components>`);
   objects.forEach((_, k) => parts.push(`<component objectid="${k + 2}"/>`));
   parts.push('</components></object>\n');
-  parts.push(`</resources>\n<build><item objectid="${parentId}"/>`);
+  parts.push(`</resources>\n<build><item objectid="${parentId}" transform="${centerTransform(objects)}"/>`);
   parts.push('</build>\n</model>\n');
 
   const bambu = objects.length === 2; // le gabarit Bambu décrit exactement 2 filaments

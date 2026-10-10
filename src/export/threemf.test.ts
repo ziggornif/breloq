@@ -6,6 +6,18 @@ import type { Mesh } from '../mesh/extrude';
 const tri: Mesh = { positions: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1], indices: [0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3] };
 
 describe('build3mf', () => {
+  it('centers the object on the P1S plate (256 × 256 mm) through the build item transform', () => {
+    // emprise x ∈ [0, 100], y ∈ [-30, 0] (Y retourné) → centre (50, -15)
+    const box = (x0: number, y0: number, x1: number, y1: number): Mesh => ({
+      positions: [x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y1, 3], indices: [0, 1, 2, 0, 2, 3],
+    });
+    const model = strFromU8(unzipSync(build3mf([
+      { name: 'base', color: '#c8b496', mesh: box(0, -30, 100, 0) },
+      { name: 'lettres', color: '#ffffff', mesh: box(10, -20, 90, -10) },
+    ]))['3D/3dmodel.model']);
+    expect(model).toContain('<item objectid="4" transform="1 0 0 0 1 0 0 0 1 78 143 0"/>');
+  });
+
   it('produces a valid 3MF package as one parent object with two components', () => {
     const files = unzipSync(build3mf([
       { name: 'base', color: '#c8b496', mesh: tri },
@@ -24,9 +36,9 @@ describe('build3mf', () => {
     expect(model).toContain('<component objectid="2"/>');
     expect(model).toContain('<component objectid="3"/>');
     expect(model.match(/<item /g)).toEqual(['<item ']);
-    expect(model).toContain('<item objectid="4"/>');
-    expect(model).not.toContain('<item objectid="2"/>');
-    expect(model).not.toContain('<item objectid="3"/>');
+    expect(model).toMatch(/<item objectid="4" transform="[^"]*"\/>/);
+    expect(model).not.toContain('<item objectid="2"');
+    expect(model).not.toContain('<item objectid="3"');
     for (const blk of model.match(/<object [^>]*pid="1"[\s\S]*?<\/object>/g)!) {
       const nv = (blk.match(/<vertex /g) ?? []).length;
       for (const m of blk.matchAll(/v[123]="(\d+)"/g)) expect(Number(m[1])).toBeLessThan(nv);
