@@ -110,4 +110,8 @@
   .error { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #b91c1c; }
   .error button { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 6px 12px; }
   .credit { margin: 12px 0 0; font-size: 11px; color: var(--muted); text-align: right; }
+  @media (max-width: 800px) {
+    .picker { inset: 0; width: auto; max-height: none; border-radius: 0; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+  }
 </style>

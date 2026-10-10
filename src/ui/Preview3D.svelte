@@ -188,4 +188,5 @@
   .wrap { position: relative; width: 100%; height: 100%; }
   .err { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 16px; text-align: center; color: var(--muted); pointer-events: none; }
   .host { width: 100%; height: 100%; min-height: 300px; }
+  @media (max-width: 800px) { .host { min-height: 0; } }
 </style>

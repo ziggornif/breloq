@@ -181,9 +181,17 @@
   .layout { display: flex; height: 100%; }
   .stage { flex: 1; position: relative; display: flex; flex-direction: column; padding: 56px 24px 24px; min-width: 0; }
   .tabs { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; background: #e4e4e7; border-radius: 10px; padding: 3px; z-index: 1; }
-  .tabs button { border: 0; background: transparent; padding: 6px 14px; border-radius: 8px; color: var(--muted); }
+  .tabs button { border: 0; background: transparent; padding: 6px 14px; border-radius: 8px; color: var(--muted); white-space: nowrap; }
   .tabs button.on { background: #fff; color: var(--text); }
   .msg { margin: auto; color: var(--muted); }
   .warn { position: absolute; bottom: 12px; left: 24px; color: #b45309; background: #fef3c7; padding: 6px 10px; border-radius: 6px; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #18181b; color: #fff; padding: 10px 16px; border-radius: 8px; }
+
+  /* Mobile : aperçu collé en haut, réglages en dessous, la page défile. */
+  @media (max-width: 800px) {
+    .layout { flex-direction: column; height: auto; min-height: 100%; }
+    .stage { position: sticky; top: 0; z-index: 2; height: 42vh; min-height: 260px; flex: none; padding: 52px 12px 12px; background: var(--bg); border-bottom: 1px solid var(--border); }
+    .warn { left: 12px; right: 12px; bottom: 8px; font-size: 13px; }
+    .toast { bottom: 88px; max-width: calc(100% - 32px); }
+  }
 </style>

@@ -120,4 +120,8 @@
   .actions { margin-top: auto; position: sticky; bottom: 0; background: var(--panel); padding-top: 8px; }
   .primary { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-size: 16px; font-weight: 600; }
   .primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  @media (max-width: 800px) {
+    .panel { width: 100%; height: auto; overflow: visible; border-left: 0; padding: 12px; }
+    .actions { padding-bottom: 12px; }
+  }
 </style>
