@@ -1,5 +1,6 @@
 import { strToU8, zipSync } from 'fflate';
 import type { Mesh } from '../mesh/extrude';
+import bambuProject from './bambu-p1s-project.json';
 
 export interface ThreeMfObject {
   name: string;
@@ -41,9 +42,16 @@ ${parts.join('\n')}
 `;
 }
 
+/**
+ * Metadata/project_settings.config : Bambu Studio ouvre le projet avec l'imprimante P1S 0.4 et 2× Bambu PLA Basic,
+ * colorés comme les objets. Gabarit exporté de Bambu Studio 02.07.01.57 (2 filaments) ; ignoré par PrusaSlicer.
+ */
+const bambuProjectSettings = (objects: ThreeMfObject[]) =>
+  JSON.stringify({ ...bambuProject, filament_colour: objects.map((o) => `${o.color.toUpperCase()}FF`) }, null, 2);
+
 export function build3mf(objects: ThreeMfObject[], name = 'porte-cles'): Uint8Array {
   const parts: string[] = [];
-  parts.push('<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="fr-FR" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n<resources>\n<basematerials id="1">');
+  parts.push('<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="fr-FR" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n<metadata name="Application">BambuStudio-02.07.01.57</metadata>\n<resources>\n<basematerials id="1">');
   for (const o of objects) parts.push(`<base name="${esc(o.name)}" displaycolor="${o.color.toUpperCase()}FF"/>`);
   parts.push('</basematerials>\n');
   objects.forEach((o, k) => {
@@ -62,10 +70,12 @@ export function build3mf(objects: ThreeMfObject[], name = 'porte-cles'): Uint8Ar
   parts.push(`</resources>\n<build><item objectid="${parentId}"/>`);
   parts.push('</build>\n</model>\n');
 
+  const bambu = objects.length === 2; // le gabarit Bambu décrit exactement 2 filaments
   return zipSync({
     '[Content_Types].xml': strToU8(CONTENT_TYPES),
     '_rels/.rels': strToU8(RELS),
     '3D/3dmodel.model': strToU8(parts.join('')),
     'Metadata/model_settings.config': strToU8(modelSettings(objects, parentId, name)),
+    ...(bambu ? { 'Metadata/project_settings.config': strToU8(bambuProjectSettings(objects)) } : {}),
   });
 }

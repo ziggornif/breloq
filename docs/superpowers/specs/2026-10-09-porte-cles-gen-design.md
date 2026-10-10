@@ -77,7 +77,7 @@ La base est un objet 3MF contenant **deux coques fermées** (tranche inférieure
 - `svg.ts` : `laserSvg(geometry)` → un seul `<texte>-laser.svg`, `width/height` et `viewBox` en mm (convention de l'export Atomm, lue par xTool Studio) :
   - en haut : base B découpée (`data-processing-type="VECTOR_CUTTING"`, `stroke="#cc3333"`) + contour des lettres en marquage (`VECTOR_ENGRAVING`, `stroke="#3333cc"`) pour le positionnement ;
   - en dessous, 10 mm plus bas : lettres L ∪ I découpées.
-- `threemf.ts` : 3MF Core minimal : `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` avec `unit="millimeter"`, un `<basematerials>` à deux couleurs, deux objets maillés (`name="base"`, `name="lettres"`) regroupés dans un objet parent à `<components>`, un seul `<item>` dans `<build>`. Fichier `<texte>.3mf`.
+- `threemf.ts` : 3MF Core minimal : `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` avec `unit="millimeter"`, un `<basematerials>` à deux couleurs, deux objets maillés (`name="base"`, `name="lettres"`) regroupés dans un objet parent à `<components>`, un seul `<item>` dans `<build>`. Fichier `<texte>.3mf`. Pour Bambu Studio : `Metadata/model_settings.config` (extrudeur 1 = base, 2 = lettres), `Metadata/project_settings.config` (gabarit exporté de Bambu Studio : imprimante P1S 0.4, 2× Bambu PLA Basic, `filament_colour` = couleurs choisies) et `<metadata name="Application">BambuStudio-…` qui fait honorer ce gabarit ; PrusaSlicer les ignore.
 - `download.ts` : Blob + lien temporaire.
 
 ## UI (`src/ui/`, Svelte 5)

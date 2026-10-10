@@ -11,7 +11,7 @@ describe('build3mf', () => {
       { name: 'base', color: '#c8b496', mesh: tri },
       { name: 'lettres', color: '#ffffff', mesh: tri },
     ]));
-    expect(Object.keys(files).sort()).toEqual(['3D/3dmodel.model', 'Metadata/model_settings.config', '[Content_Types].xml', '_rels/.rels']);
+    expect(Object.keys(files).sort()).toEqual(['3D/3dmodel.model', 'Metadata/model_settings.config', 'Metadata/project_settings.config', '[Content_Types].xml', '_rels/.rels']);
     const model = strFromU8(files['3D/3dmodel.model']);
     expect(model).toContain('unit="millimeter"');
     expect(model.match(/<object /g)).toHaveLength(3);
@@ -50,5 +50,20 @@ describe('build3mf', () => {
   it('honours an explicit extruder', () => {
     const files = unzipSync(build3mf([{ name: 'a', color: '#000000', mesh: tri, extruder: 3 }]));
     expect(strFromU8(files['Metadata/model_settings.config'])).toContain('<metadata key="extruder" value="3"/>');
+  });
+
+  it('defaults to Bambu PLA Basic on a P1S 0.4 with the objects colors as filament colors', () => {
+    const files = unzipSync(build3mf([
+      { name: 'base', color: '#ff8800', mesh: tri },
+      { name: 'lettres', color: '#112233', mesh: tri },
+    ]));
+    const ps = JSON.parse(strFromU8(files['Metadata/project_settings.config']));
+    expect(ps.from).toBe('project');
+    expect(ps.printer_settings_id).toBe('Bambu Lab P1S 0.4 nozzle');
+    expect(ps.filament_settings_id).toEqual(Array(2).fill('Bambu PLA Basic @BBL P1S 0.4 nozzle'));
+    expect(ps.filament_ids).toEqual(['GFA00', 'GFA00']);
+    expect(ps.filament_colour).toEqual(['#FF8800FF', '#112233FF']);
+    // Bambu Studio n'honore project_settings que pour ses propres fichiers
+    expect(strFromU8(files['3D/3dmodel.model'])).toMatch(/<metadata name="Application">BambuStudio-[\d.]+<\/metadata>/);
   });
 });
