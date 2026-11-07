@@ -8,7 +8,7 @@
   import { fileBaseName } from '../export/filename';
   import { laserSvg } from '../export/svg';
   import { download } from '../export/download';
-  import { importFont, listFonts, loadFont, type FontEntry } from '../fonts/registry';
+  import { importFont, listFonts, loadFont, restoredFonts, type FontEntry } from '../fonts/registry';
   import { iconDataUri, loadIcon } from '../icons/iconify';
   import { iconToShape, type IconSvg } from '../geometry/svgicon';
   import IconPicker from './IconPicker.svelte';
@@ -18,18 +18,27 @@
 
   const STORAGE_KEY = 'porte-cles-gen:params';
 
+  /** Le hash n'embarque pas les polices importées (absentes chez le destinataire d'un lien). */
+  function shareable(p: KeychainParams): KeychainParams {
+    return p.fontId.startsWith('custom:') ? { ...p, fontId: DEFAULT_PARAMS.fontId } : p;
+  }
+
   function initialParams(): KeychainParams {
-    const fromUrl = location.hash.length > 1 ? decodeParams(location.hash.slice(1)) : null;
-    if (fromUrl) return fromUrl;
+    let stored: KeychainParams | null = null;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return sanitize(JSON.parse(raw));
+      if (raw) stored = sanitize(JSON.parse(raw));
     } catch { /* stockage indisponible */ }
-    return { ...DEFAULT_PARAMS };
+    const hash = location.hash.slice(1);
+    // simple rechargement : le hash est celui qu'on a écrit nous-mêmes, on garde la police importée
+    if (stored && hash === encodeParams(shareable(stored))) return stored;
+    const fromUrl = hash ? decodeParams(hash) : null;
+    return fromUrl ?? stored ?? { ...DEFAULT_PARAMS };
   }
 
   let params = $state<KeychainParams>(initialParams());
   let fonts = $state<FontEntry[]>(listFonts());
+  restoredFonts.then(() => (fonts = listFonts()));
   let font = $state<Font | null>(null);
   let icon = $state.raw<IconSvg | undefined>(undefined);
   let geometry = $state<KeychainGeometry | null>(null);
@@ -105,8 +114,7 @@
     const snapshot = sanitize($state.snapshot(params));
     const t = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch { /* ignoré */ }
-      const shareable = snapshot.fontId.startsWith('custom:') ? { ...snapshot, fontId: DEFAULT_PARAMS.fontId } : snapshot;
-      history.replaceState(null, '', `#${encodeParams(shareable)}`);
+      history.replaceState(null, '', `#${encodeParams(shareable(snapshot))}`);
     }, 300);
     return () => clearTimeout(t);
   });

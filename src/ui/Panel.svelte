@@ -107,8 +107,8 @@
   .head h3 { margin: 0; }
   .text { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 18px; }
   .row { display: flex; gap: 8px; margin-bottom: 4px; }
-  select { flex: 1; padding: 8px; border-radius: 8px; border: 0; background: #f4f4f5; font-size: 18px; }
-  .ghost { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+  select { flex: 1; min-width: 0; padding: 8px; border-radius: 8px; border: 0; background: #f4f4f5; font-size: 18px; text-overflow: ellipsis; }
+  .ghost { flex-shrink: 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
   .wide { width: 100%; text-align: left; margin: 8px 0; }
 .icon-pick { display: flex; align-items: center; gap: 8px; }
 .icon-pick span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
