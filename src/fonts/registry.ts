@@ -1,4 +1,5 @@
 import { parse, type Font } from 'opentype.js';
+import { listStoredFonts, saveStoredFont } from './store';
 import '@fontsource/pacifico/400.css';
 import '@fontsource/lobster/400.css';
 import '@fontsource/dancing-script/700.css';
@@ -57,14 +58,31 @@ export const FONTS: FontEntry[] = [
 const custom: FontEntry[] = [];
 const cache = new Map<string, Promise<Font>>();
 
+function addCustom(name: string, font: Font): FontEntry {
+  const entry: FontEntry = { id: `custom:${name}`, label: `${name} (importée)`, family: 'inherit', font };
+  const i = custom.findIndex((f) => f.id === entry.id);
+  if (i >= 0) custom[i] = entry; else custom.push(entry);
+  return entry;
+}
+
+/** Recharge les polices importées lors des sessions précédentes. */
+export const restoredFonts: Promise<void> = listStoredFonts()
+  .then((stored) => {
+    for (const { name, data } of stored) {
+      try { addCustom(name, parse(data)); } catch { /* entrée corrompue, ignorée */ }
+    }
+  })
+  .catch(() => { /* stockage indisponible */ });
+
 export function listFonts(): FontEntry[] {
   return [...FONTS, ...custom];
 }
 
-export function loadFont(id: string): Promise<Font> {
+export async function loadFont(id: string): Promise<Font> {
+  if (id.startsWith('custom:')) await restoredFonts;
   const entry = listFonts().find((f) => f.id === id);
-  if (!entry) return Promise.reject(new Error(`Police inconnue : ${id}`));
-  if (entry.font) return Promise.resolve(entry.font);
+  if (!entry) throw new Error(`Police inconnue : ${id}`);
+  if (entry.font) return entry.font;
   let p = cache.get(id);
   if (!p) {
     p = fetch(entry.url!)
@@ -80,15 +98,15 @@ export function loadFont(id: string): Promise<Font> {
 }
 
 export async function importFont(file: File): Promise<FontEntry> {
+  const data = await file.arrayBuffer();
   let font: Font;
   try {
-    font = parse(await file.arrayBuffer());
+    font = parse(data);
   } catch {
     throw new Error(`« ${file.name} » n'est pas une police TTF/OTF/WOFF valide`);
   }
   const name = file.name.replace(/\.(ttf|otf|woff)$/i, '');
-  const entry: FontEntry = { id: `custom:${name}`, label: `${name} (importée)`, family: 'inherit', font };
-  const i = custom.findIndex((f) => f.id === entry.id);
-  if (i >= 0) custom[i] = entry; else custom.push(entry);
+  const entry = addCustom(name, font);
+  saveStoredFont({ name, data }).catch(() => { /* non persistée, reste dispo pour la session */ });
   return entry;
 }
